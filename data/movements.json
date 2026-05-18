@@ -1,0 +1,28 @@
+{
+  "hareketler": [
+    {
+      "id": "h-b99da38c",
+      "malzemeId": "bf-aae5e11a",
+      "tip": "gelis",
+      "miktar": 12,
+      "tarih": "2026-05-18",
+      "not": "Açılış stoku"
+    },
+    {
+      "id": "h-57d84603",
+      "malzemeId": "bf-aae5e11a",
+      "tip": "gelis",
+      "miktar": 3,
+      "tarih": "2026-05-18"
+    },
+    {
+      "id": "h-b7022d95",
+      "malzemeId": "bf-aae5e11a",
+      "tip": "kullanim",
+      "miktar": 4,
+      "tarih": "2026-05-12",
+      "ustaId": "u-e80e9bfb",
+      "is": "welkhjkhjk"
+    }
+  ]
+}
