@@ -13,6 +13,11 @@ const initialState = {
   error: null,
 };
 
+/**
+ * Updates application state. Each action touches only the relevant state slice.
+ * @param {typeof initialState} state
+ * @param {{ type: string, payload?: any }} action
+ */
 function reducer(state, action) {
   switch (action.type) {
     case 'LOADED':
@@ -56,8 +61,7 @@ function reducer(state, action) {
       return { ...state, ustalar: state.ustalar.filter((u) => u.id !== action.payload) };
     case 'MOVEMENT_ADDED': {
       const { movement, updatedMaterial } = action.payload;
-      const updateList = (list) =>
-        list.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m));
+      const updateList = (list) => list.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m));
       return {
         ...state,
         hareketler: [movement, ...state.hareketler],
@@ -72,6 +76,12 @@ function reducer(state, action) {
 
 const StoreContext = createContext(null);
 
+/**
+ * Context provider that holds all application state.
+ * Fetches materials, workers, and movements in parallel on initial render.
+ * @param {object} props
+ * @param {React.ReactNode} props.children
+ */
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -95,6 +105,7 @@ export function StoreProvider({ children }) {
       .catch((err) => dispatch({ type: 'ERROR', payload: err.message }));
   }, []);
 
+  /** @param {string} id - Material ID */
   const getMalzeme = useCallback(
     (id) =>
       state.boruFittings.find((m) => m.id === id) ||
@@ -102,17 +113,19 @@ export function StoreProvider({ children }) {
     [state.boruFittings, state.digerMalzeme]
   );
 
+  /** @param {string} id - Worker ID */
   const getUsta = useCallback(
     (id) => state.ustalar.find((u) => u.id === id),
     [state.ustalar]
   );
 
+  /** @param {string} malzemeId - Material ID to filter by */
   const hareketlerFor = useCallback(
-    (malzemeId) =>
-      state.hareketler.filter((h) => h.malzemeId === malzemeId),
+    (malzemeId) => state.hareketler.filter((h) => h.malzemeId === malzemeId),
     [state.hareketler]
   );
 
+  /** @param {string} ustaId - Worker ID to filter by */
   const hareketlerForUsta = useCallback(
     (ustaId) => state.hareketler.filter((h) => h.ustaId === ustaId),
     [state.hareketler]
@@ -133,7 +146,7 @@ export function StoreProvider({ children }) {
   const addMalzeme = useCallback(async (payload) => {
     const material = await materialsApi.create(payload);
     dispatch({ type: 'MATERIAL_ADDED', payload: material });
-    // Opening stock creates a server-side movement — refetch to sync it into state
+    // Opening stock creates a server-side movement — re-fetch to stay in sync
     if (Number(payload.baslangic) > 0) {
       const hareketler = await movementsApi.getAll();
       dispatch({ type: 'MOVEMENTS_LOADED', payload: hareketler });
@@ -194,16 +207,14 @@ export function StoreProvider({ children }) {
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
+/**
+ * Accesses the store context. Must be called inside StoreProvider.
+ * @returns {ReturnType<typeof createContext>}
+ * @throws {Error} When called outside StoreProvider
+ */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useStore() {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error('useStore must be used inside StoreProvider');
   return ctx;
-}
-
-const TR_AYLAR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-
-export function fmtTarih(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso + 'T00:00:00');
-  return `${d.getDate()} ${TR_AYLAR[d.getMonth()]} ${d.getFullYear()}`;
 }
