@@ -3,5 +3,9 @@ dist
 .DS_Store
 *.log
 .vite
+.env
+.env.local
 # Data files contain real inventory — exclude from git or remove this line to commit them
 # data/
+.vercel
+.env*.local
