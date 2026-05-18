@@ -4,24 +4,33 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"node server/index.js\" \"vite\"",
-    "server": "nodemon server/index.js",
-    "client": "vite",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server/index.js",
-    "test": "node server/tests/api.test.js"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "eslint --max-warnings 0"
+    ]
   },
   "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
+    "mongodb": "^7.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@vitejs/plugin-react": "^4.3.1",
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.14",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
     "vite": "^5.4.0"
   }
 }

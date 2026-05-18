@@ -30,6 +30,20 @@ npm start            # Start Express — serves API + frontend on PORT (default 
 
 The `data/` directory is created automatically on first start. JSON files persist across restarts — back them up before updates. The `dist/` directory is gitignored; rebuild on each deploy.
 
+## Agent Usage
+
+**Always use specialized agents** for every non-trivial task — never work inline when an agent type fits:
+
+- `researcher` — before touching any code: read files, trace data flow, understand dependencies
+- `backend-dev` — Express routes, use cases, domain entities, repositories
+- `frontend-dev` — React components, store, forms, pages, API client modules
+- `tester` — run tests, write new tests, diagnose failures
+- `reviewer` — audit changed files after development, before final testing
+- `Explore` — broad codebase search spanning multiple files or locations
+- `Plan` — design implementation strategy for any multi-step task
+
+Run independent agents **in parallel** (single message, multiple Agent tool calls).
+
 ## Development Workflow
 
 Follow this 5-stage process for every non-trivial change:
