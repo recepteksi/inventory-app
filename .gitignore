@@ -3,3 +3,5 @@ dist
 .DS_Store
 *.log
 .vite
+# Data files contain real inventory — exclude from git or remove this line to commit them
+# data/
