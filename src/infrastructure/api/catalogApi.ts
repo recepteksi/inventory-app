@@ -9,5 +9,5 @@ export const catalogApi = {
     apiFetch<CatalogEntry>('/catalog', { method: 'POST', body: payload }),
 
   remove: (id: string): Promise<void> =>
-    apiFetch<void>(`/catalog/${id}`, { method: 'DELETE' }),
+    apiFetch<void>(`/catalog?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

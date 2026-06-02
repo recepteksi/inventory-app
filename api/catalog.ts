@@ -22,6 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
+    if (req.method === 'DELETE') {
+      requireRole(req, 'admin');
+      const id = req.query['id'] as string | undefined;
+      if (!id) { res.status(400).json({ error: 'id query parameter required' }); return; }
+      await catalogRepo.delete(id);
+      res.status(204).end();
+      return;
+    }
+
     res.status(405).end();
   } catch (err) {
     const appErr = err as AppError;

@@ -9,8 +9,8 @@ export const usersApi = {
     apiFetch<PublicUser>('/users', { method: 'POST', body: payload }),
 
   update: (id: string, payload: Record<string, unknown>): Promise<PublicUser> =>
-    apiFetch<PublicUser>(`/users/${id}`, { method: 'PUT', body: payload }),
+    apiFetch<PublicUser>(`/users?id=${encodeURIComponent(id)}`, { method: 'PUT', body: payload }),
 
   remove: (id: string): Promise<void> =>
-    apiFetch<void>(`/users/${id}`, { method: 'DELETE' }),
+    apiFetch<void>(`/users?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
