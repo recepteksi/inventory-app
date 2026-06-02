@@ -1,17 +1,33 @@
-import { createPipeFitting, createOtherMaterial } from '../../../domain/entities/Material.js';
+import {
+  createPipeFitting,
+  createOtherMaterial,
+  createVentilation,
+  createIsolation,
+} from '../../../domain/entities/Material.js';
 import { recordDelivery } from '../movement/recordDelivery.js';
 import type { Material, IMaterialRepository, IMovementRepository } from '../../../types/index.js';
 
 interface AppError extends Error { status?: number; }
 
+/** Builds a material from the request payload, picking the factory for its group. */
+function buildMaterial(payload: Record<string, unknown>): Material {
+  switch (payload['group']) {
+    case 'ventilation':
+      return createVentilation(payload as Parameters<typeof createVentilation>[0]);
+    case 'isolation':
+      return createIsolation(payload as Parameters<typeof createIsolation>[0]);
+    case 'other':
+      return createOtherMaterial(payload as Parameters<typeof createOtherMaterial>[0]);
+    default:
+      return createPipeFitting(payload as Parameters<typeof createPipeFitting>[0]);
+  }
+}
+
 export async function createMaterial(
   payload: Record<string, unknown>,
   { materialRepo, movementRepo }: { materialRepo: IMaterialRepository; movementRepo: IMovementRepository }
 ): Promise<Material> {
-  const material =
-    payload['group'] === 'pipe'
-      ? createPipeFitting(payload as Parameters<typeof createPipeFitting>[0])
-      : createOtherMaterial(payload as Parameters<typeof createOtherMaterial>[0]);
+  const material = buildMaterial(payload);
 
   const isDuplicate = await materialRepo.checkDuplicate(material);
   if (isDuplicate) {

@@ -1,11 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from './_repos.js';
+import { requireAuth } from './_auth.js';
 import { createWorker } from '../server/application/usecases/worker/createWorker.js';
 
 interface AppError extends Error { status?: number; }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
+    requireAuth(req);
     const { workerRepo } = await getRepos();
 
     if (req.method === 'GET') {

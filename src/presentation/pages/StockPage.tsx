@@ -6,9 +6,9 @@ import { Sub } from '../components/ui/Sub.tsx';
 import { IconSearch } from '../components/ui/Icons.tsx';
 import { MaterialGlyph } from '../components/ui/MaterialGlyph.tsx';
 import { useStore } from '../store/store.tsx';
-import { getMaterialName } from '../../domain/entities/material.ts';
+import { getMaterialName, isolationSize } from '../../domain/entities/material.ts';
 import { t } from '../../i18n/tr.ts';
-import type { Material } from '../../types/index.ts';
+import type { Material, MaterialGroup } from '../../types/index.ts';
 
 interface ThProps {
   children?: React.ReactNode;
@@ -29,23 +29,11 @@ function Th({ children, sortKey, dir, k, onClick, w, align = 'left' }: ThProps) 
   );
 }
 
-interface TdProps {
-  children: React.ReactNode;
-  align?: 'left' | 'right' | 'center';
-}
-
-function Td({ children, align = 'left' }: TdProps) {
+function Td({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' | 'center' }) {
   return <td style={{ padding: '10px 14px', textAlign: align, fontFamily: TOKENS.font, fontSize: 13.5, color: TOKENS.ink, verticalAlign: 'middle' }}>{children}</td>;
 }
 
-interface StatTileProps {
-  k: string;
-  v: string | number;
-  sub: string;
-  warn?: boolean;
-}
-
-function StatTile({ k, v, sub, warn }: StatTileProps) {
+function StatTile({ k, v, sub, warn }: { k: string; v: string | number; sub: string; warn?: boolean }) {
   return (
     <div style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, padding: 14 }}>
       <Sub style={{ marginBottom: 2 }}>{k}</Sub>
@@ -55,31 +43,22 @@ function StatTile({ k, v, sub, warn }: StatTileProps) {
   );
 }
 
-interface StockBarProps {
-  item: Pick<Material, 'stock' | 'minimum'>;
-}
-
-function StockBar({ item }: StockBarProps) {
-  const ratio = Math.min(item.stock / (item.minimum * 2 || 1), 1);
+function StockBar({ item }: { item: Pick<Material, 'stock' | 'minimum'> }) {
   const d = stockStatus(item);
+  const tracked = item.minimum != null && item.minimum > 0;
+  const denom = tracked ? (item.minimum as number) * 2 : Math.max(item.stock, 1);
+  const ratio = Math.min(item.stock / denom, 1);
   return (
     <div style={{ width: 90, height: 4, background: TOKENS.lineSoft, borderRadius: 2, marginTop: 4, marginLeft: 'auto', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${ratio * 100}%`, background: d.color, borderRadius: 2 }} />
-      <div style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: TOKENS.inkMuted, opacity: 0.4 }} />
+      {tracked && <div style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: TOKENS.inkMuted, opacity: 0.4 }} />}
     </div>
   );
 }
 
-interface FilterGroupProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-}
-
-function FilterGroup({ label, value, onChange, options }: FilterGroupProps) {
+function FilterGroup({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
       <Sub style={{ marginRight: 2 }}>{label}</Sub>
       {options.map((o) => (
         <Chip key={o} active={value === o} onClick={() => onChange(o)}>{o === 'all' ? t('stockPage.filterAll') : o}</Chip>
@@ -88,31 +67,41 @@ function FilterGroup({ label, value, onChange, options }: FilterGroupProps) {
   );
 }
 
+const GROUPS: { id: MaterialGroup; label: string }[] = [
+  { id: 'pipe', label: 'Boru & Fittings' },
+  { id: 'other', label: 'Diğer Malzeme' },
+  { id: 'ventilation', label: 'Havalandırma' },
+  { id: 'isolation', label: 'İzolasyon' },
+];
+
 interface StockPageProps {
   open: (kind: string, id?: string) => void;
 }
 
 export function StockPage({ open }: StockPageProps) {
-  const { pipeFittings, otherMaterials, movements } = useStore();
-  const [group, setGroup] = useState('pipe');
-  const [diameter, setDiameter] = useState('all');
-  const [grade, setGrade] = useState('all');
-  const [kind, setKind] = useState('all');
-  const [category, setCategory] = useState('all');
+  const { pipeFittings, otherMaterials, ventilation, isolation, movements, materialsByGroup, catalogOptions } = useStore();
+  const [group, setGroup] = useState<MaterialGroup>('pipe');
+  const [f1, setF1] = useState('all'); // diameter | category
+  const [f2, setF2] = useState('all'); // kind
+  const [f3, setF3] = useState('all'); // grade
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortKey, setSortKey] = useState('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
+  const resetFilters = (g: MaterialGroup) => { setGroup(g); setF1('all'); setF2('all'); setF3('all'); };
+
   const items = useMemo(() => {
-    let list = group === 'pipe' ? pipeFittings : otherMaterials;
+    let list = materialsByGroup(group);
     list = list.filter((m) => {
-      if (group === 'pipe') {
-        if (diameter !== 'all' && m.diameter !== diameter) return false;
-        if (grade !== 'all' && m.grade !== grade) return false;
-        if (kind !== 'all' && m.kind !== kind) return false;
+      if (group === 'pipe' || group === 'ventilation') {
+        if (f1 !== 'all' && m.diameter !== f1) return false;
+        if (f2 !== 'all' && m.kind !== f2) return false;
+        if (f3 !== 'all' && m.grade !== f3) return false;
+      } else if (group === 'isolation') {
+        if (f2 !== 'all' && m.kind !== f2) return false;
       } else {
-        if (category !== 'all' && m.category !== category) return false;
+        if (f1 !== 'all' && m.category !== f1) return false;
       }
       if (statusFilter !== 'all') {
         const d = stockStatus(m);
@@ -129,14 +118,19 @@ export function StockPage({ open }: StockPageProps) {
       if (av === bv) return 0;
       return ((av ?? '') < (bv ?? '') ? -1 : 1) * (sortDir === 'asc' ? 1 : -1);
     });
-  }, [pipeFittings, otherMaterials, group, diameter, grade, kind, category, q, statusFilter, sortKey, sortDir]);
+  }, [materialsByGroup, group, f1, f2, f3, q, statusFilter, sortKey, sortDir]);
+
+  const all = useMemo(
+    () => [...pipeFittings, ...otherMaterials, ...ventilation, ...isolation],
+    [pipeFittings, otherMaterials, ventilation, isolation]
+  );
 
   const counts = useMemo(() => ({
-    total: pipeFittings.length + otherMaterials.length,
-    low: [...pipeFittings, ...otherMaterials].filter((m) => m.stock < m.minimum).length,
-    pipe: pipeFittings.length,
-    other: otherMaterials.length,
-  }), [pipeFittings, otherMaterials]);
+    total: all.length,
+    low: all.filter((m) => m.minimum != null && m.stock < m.minimum).length,
+    pipe: pipeFittings.length, other: otherMaterials.length,
+    ventilation: ventilation.length, isolation: isolation.length,
+  }), [all, pipeFittings, otherMaterials, ventilation, isolation]);
 
   const monthStats = useMemo(() => {
     const month = new Date().toISOString().slice(0, 7);
@@ -156,6 +150,8 @@ export function StockPage({ open }: StockPageProps) {
     else { setSortKey(k); setSortDir('asc'); }
   };
 
+  const isPipeLike = group === 'pipe' || group === 'ventilation';
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, paddingBottom: 4 }}>
@@ -167,7 +163,7 @@ export function StockPage({ open }: StockPageProps) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 16 }}>
-        <StatTile k={t('stockPage.statTotal')} v={counts.total} sub={`${counts.pipe} boru/fittings · ${counts.other} diğer`} />
+        <StatTile k={t('stockPage.statTotal')} v={counts.total} sub={`${counts.pipe} boru · ${counts.ventilation} hava · ${counts.isolation} izo · ${counts.other} diğer`} />
         <StatTile k={t('stockPage.statLow')} v={counts.low} sub={t('stockPage.statLowSub')} warn />
         <StatTile k={t('stockPage.statDelivery')} v={monthStats.deliveryCount} sub={t('stockPage.statDeliverySub').replace('{qty}', String(monthStats.deliveryQty))} />
         <StatTile k={t('stockPage.statUsage')} v={monthStats.usageCount} sub={t('stockPage.statUsageSub').replace('{count}', String(monthStats.usageWorkerCount))} />
@@ -175,15 +171,15 @@ export function StockPage({ open }: StockPageProps) {
 
       <div style={{ marginTop: 20, background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'inline-flex', background: TOKENS.lineSoft, padding: 3, borderRadius: 9 }}>
-            {[{ id: 'pipe', label: t('stockPage.tabPipe'), n: counts.pipe }, { id: 'other', label: t('stockPage.tabOther'), n: counts.other }].map((tab) => (
-              <button key={tab.id} onClick={() => setGroup(tab.id)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 7, background: group === tab.id ? TOKENS.paper : 'transparent', color: group === tab.id ? TOKENS.ink : TOKENS.inkSoft, fontFamily: TOKENS.font, fontWeight: 600, fontSize: 13, boxShadow: group === tab.id ? '0 1px 2px rgba(0,0,0,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'inline-flex', background: TOKENS.lineSoft, padding: 3, borderRadius: 9, flexWrap: 'wrap' }}>
+            {GROUPS.map((tab) => (
+              <button key={tab.id} onClick={() => resetFilters(tab.id)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 7, background: group === tab.id ? TOKENS.paper : 'transparent', color: group === tab.id ? TOKENS.ink : TOKENS.inkSoft, fontFamily: TOKENS.font, fontWeight: 600, fontSize: 13, boxShadow: group === tab.id ? '0 1px 2px rgba(0,0,0,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {tab.label}
-                <span style={{ fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.inkMuted, background: group === tab.id ? TOKENS.lineSoft : 'transparent', padding: '1px 6px', borderRadius: 4 }}>{tab.n}</span>
+                <span style={{ fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.inkMuted, background: group === tab.id ? TOKENS.lineSoft : 'transparent', padding: '1px 6px', borderRadius: 4 }}>{counts[tab.id]}</span>
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: TOKENS.bg, border: `1px solid ${TOKENS.line}`, borderRadius: 8, padding: '7px 10px' }}>
               <IconSearch />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('stockPage.searchPlaceholder')} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: TOKENS.font, fontSize: 14 }} />
@@ -200,14 +196,18 @@ export function StockPage({ open }: StockPageProps) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 14, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {group === 'pipe' ? (
+          {isPipeLike && (
             <>
-              <FilterGroup label={t('stockPage.filterDiameter')} value={diameter} onChange={setDiameter} options={['all', '1"', '2"', '3"']} />
-              <FilterGroup label={t('stockPage.filterKind')} value={kind} onChange={setKind} options={['all', 'Boru', 'Dirsek', 'Tee', 'Manşon']} />
-              <FilterGroup label={t('stockPage.filterGrade')} value={grade} onChange={setGrade} options={['all', 'Siyah', 'Galvaniz', 'Paslanmaz']} />
+              <FilterGroup label={t('stockPage.filterDiameter')} value={f1} onChange={setF1} options={['all', ...catalogOptions(group, 'diameter')]} />
+              <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...catalogOptions(group, 'kind')]} />
+              <FilterGroup label={t('stockPage.filterGrade')} value={f3} onChange={setF3} options={['all', ...catalogOptions(group, 'grade')]} />
             </>
-          ) : (
-            <FilterGroup label={t('stockPage.filterCategory')} value={category} onChange={setCategory} options={['all', 'Elektrod', 'Boya', 'Bağlantı']} />
+          )}
+          {group === 'isolation' && (
+            <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...catalogOptions('isolation', 'kind')]} />
+          )}
+          {group === 'other' && (
+            <FilterGroup label={t('stockPage.filterCategory')} value={f1} onChange={setF1} options={['all', ...catalogOptions('other', 'category')]} />
           )}
         </div>
       </div>
@@ -218,7 +218,8 @@ export function StockPage({ open }: StockPageProps) {
             <tr style={{ background: TOKENS.bg, borderBottom: `1px solid ${TOKENS.line}` }}>
               <Th onClick={() => toggleSort('id')} sortKey={sortKey} dir={sortDir} k="id" w={120}>{t('stockPage.colCode')}</Th>
               <Th>{t('stockPage.colMaterial')}</Th>
-              {group === 'pipe' && <><Th w={70}>{t('stockPage.colDiameter')}</Th><Th w={100}>{t('stockPage.colKind')}</Th><Th w={110}>{t('stockPage.colGrade')}</Th></>}
+              {isPipeLike && <><Th w={70}>{t('stockPage.colDiameter')}</Th><Th w={100}>{t('stockPage.colKind')}</Th><Th w={110}>{t('stockPage.colGrade')}</Th></>}
+              {group === 'isolation' && <><Th w={100}>{t('stockPage.colSize')}</Th><Th w={100}>{t('stockPage.colKind')}</Th><Th w={90}>{t('stockPage.colThickness')}</Th></>}
               {group === 'other' && <Th w={130}>{t('stockPage.filterCategory')}</Th>}
               <Th onClick={() => toggleSort('stock')} sortKey={sortKey} dir={sortDir} k="stock" w={120} align="right">{t('stockPage.colStock')}</Th>
               <Th onClick={() => toggleSort('minimum')} sortKey={sortKey} dir={sortDir} k="minimum" w={90} align="right">{t('stockPage.colMin')}</Th>
@@ -233,7 +234,8 @@ export function StockPage({ open }: StockPageProps) {
                 <tr key={m.id} onClick={() => open('detail', m.id)} style={{ borderBottom: `1px solid ${TOKENS.lineSoft}`, cursor: 'pointer' }} onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.bg)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                   <Td><span style={{ fontFamily: TOKENS.mono, fontSize: 11.5, color: TOKENS.inkMuted, letterSpacing: 0.5 }}>{m.id.toUpperCase()}</span></Td>
                   <Td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><MaterialGlyph material={m} size={32} /><span style={{ fontWeight: 500, fontSize: 14 }}>{getMaterialName(m)}</span></div></Td>
-                  {group === 'pipe' && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.diameter}</span></Td><Td>{m.kind}</Td><Td>{m.grade}</Td></>}
+                  {isPipeLike && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.diameter ?? '—'}</span></Td><Td>{m.kind}</Td><Td>{m.grade}</Td></>}
+                  {group === 'isolation' && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{isolationSize(m)}</span></Td><Td>{m.kind}</Td><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.thickness}mm</span></Td></>}
                   {group === 'other' && <Td>{m.category}</Td>}
                   <Td align="right">
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' }}>
@@ -242,7 +244,7 @@ export function StockPage({ open }: StockPageProps) {
                     </div>
                     <StockBar item={m} />
                   </Td>
-                  <Td align="right"><span style={{ fontFamily: TOKENS.mono, fontSize: 12, color: TOKENS.inkSoft }}>{m.minimum}</span></Td>
+                  <Td align="right"><span style={{ fontFamily: TOKENS.mono, fontSize: 12, color: TOKENS.inkSoft }}>{m.minimum ?? '—'}</span></Td>
                   <Td><Pill color={d.color} soft={d.softColor}>{d.label}</Pill></Td>
                   <Td align="right">
                     <div style={{ display: 'inline-flex', gap: 4 }}>

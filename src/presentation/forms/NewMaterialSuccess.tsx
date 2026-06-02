@@ -4,14 +4,14 @@ import { t } from '../../i18n/tr.ts';
 
 interface NewMaterialSuccessProps {
   name: string;
-  group: 'pipe' | 'other';
+  groupLabel: string;
   unit: string;
   openingStock: string | number;
   minimum: string | number;
   goBack: () => void;
 }
 
-export function NewMaterialSuccess({ name, group, unit, openingStock, minimum, goBack }: NewMaterialSuccessProps) {
+export function NewMaterialSuccess({ name, groupLabel, unit, openingStock, minimum, goBack }: NewMaterialSuccessProps) {
   return (
     <div style={{ padding: '60px 24px 100px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
       <div style={{ width: 72, height: 72, borderRadius: 999, background: TOKENS.okSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -20,7 +20,7 @@ export function NewMaterialSuccess({ name, group, unit, openingStock, minimum, g
       <h2 style={{ fontFamily: TOKENS.font, fontWeight: 600, fontSize: 22, margin: 0, color: TOKENS.ink }}>{t('newMaterialSuccess.heading')}</h2>
       <div style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 14, padding: 16, width: '100%', textAlign: 'left' }}>
         <div style={{ fontFamily: TOKENS.mono, fontSize: 10, color: TOKENS.inkMuted, letterSpacing: 1, textTransform: 'uppercase' }}>
-          {group === 'pipe' ? t('newMaterialSuccess.groupPipe') : t('newMaterialSuccess.groupOther')}
+          {groupLabel}
         </div>
         <div style={{ fontFamily: TOKENS.font, fontWeight: 600, fontSize: 17, color: TOKENS.ink, marginTop: 2 }}>{name}</div>
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${TOKENS.lineSoft}`, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

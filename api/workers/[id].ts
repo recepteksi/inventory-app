@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from '../_repos.js';
+import { requireAuth } from '../_auth.js';
 import { updateWorker } from '../../server/application/usecases/worker/updateWorker.js';
 import { deleteWorker } from '../../server/application/usecases/worker/deleteWorker.js';
 
@@ -8,6 +9,7 @@ interface AppError extends Error { status?: number; }
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   const id = req.query['id'] as string;
   try {
+    requireAuth(req);
     const { workerRepo, movementRepo } = await getRepos();
 
     if (req.method === 'PUT') {

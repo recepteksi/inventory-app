@@ -1,9 +1,9 @@
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import { StoreProvider } from './presentation/store/store.tsx';
+import { Root } from './Root.tsx';
+import { AuthProvider } from './presentation/auth/AuthProvider.tsx';
 
 createRoot(document.getElementById('root')!).render(
-  <StoreProvider>
-    <App />
-  </StoreProvider>
+  <AuthProvider>
+    <Root />
+  </AuthProvider>
 );

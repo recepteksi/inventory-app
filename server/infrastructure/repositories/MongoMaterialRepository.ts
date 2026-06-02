@@ -1,4 +1,4 @@
-import type { Db } from 'mongodb';
+import type { Db, Filter } from 'mongodb';
 import type { Material, MaterialsResponse, IMaterialRepository } from '../../types/index.js';
 
 export function createMongoMaterialRepository(db: Db): IMaterialRepository {
@@ -11,6 +11,8 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
       return {
         pipeFittings: all.filter((m) => m.group === 'pipe'),
         otherMaterials: all.filter((m) => m.group === 'other'),
+        ventilation: all.filter((m) => m.group === 'ventilation'),
+        isolation: all.filter((m) => m.group === 'isolation'),
       };
     },
 
@@ -43,28 +45,25 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
     },
 
     async checkDuplicate(material: Partial<Material>): Promise<Material | null> {
-      if (material.group === 'pipe') {
-        const found = await col.findOne(
-          {
-            group: 'pipe',
-            diameter: material.diameter,
-            kind: material.kind,
-            grade: material.grade,
-            id: { $ne: material.id },
-          },
-          proj
-        );
-        return found as Material | null;
+      const notSelf = { id: { $ne: material.id } };
+      let filter: Record<string, unknown>;
+      if (material.group === 'pipe' || material.group === 'ventilation') {
+        filter = { group: material.group, diameter: material.diameter ?? null, kind: material.kind, grade: material.grade, ...notSelf };
+      } else if (material.group === 'isolation') {
+        filter = {
+          group: 'isolation',
+          kind: material.kind,
+          shape: material.shape,
+          diameter: material.diameter ?? null,
+          width: material.width ?? null,
+          height: material.height ?? null,
+          thickness: material.thickness,
+          ...notSelf,
+        };
+      } else {
+        filter = { group: 'other', name: { $regex: new RegExp(`^${material.name ?? ''}$`, 'i') }, ...notSelf };
       }
-      const found = await col.findOne(
-        {
-          group: 'other',
-          name: { $regex: new RegExp(`^${material.name ?? ''}$`, 'i') },
-          id: { $ne: material.id },
-        },
-        proj
-      );
-      return found as Material | null;
+      return col.findOne(filter as Filter<Material>, proj) as Promise<Material | null>;
     },
   };
 }

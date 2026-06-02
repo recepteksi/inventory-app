@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from '../_repos.js';
+import { requireAuth } from '../_auth.js';
 import { updateMaterial } from '../../server/application/usecases/material/updateMaterial.js';
 import { deleteMaterial } from '../../server/application/usecases/material/deleteMaterial.js';
 
@@ -8,6 +9,7 @@ interface AppError extends Error { status?: number; }
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   const id = req.query['id'] as string;
   try {
+    const user = requireAuth(req);
     const { materialRepo, movementRepo } = await getRepos();
 
     if (req.method === 'GET') {
@@ -24,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const material = await updateMaterial(
         id,
         req.body as Record<string, unknown>,
-        { materialRepo }
+        { materialRepo, isAdmin: user.role === 'admin' }
       );
       res.json(material);
       return;

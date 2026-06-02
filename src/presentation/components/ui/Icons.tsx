@@ -80,3 +80,45 @@ export function IconPerson({ active }: ActiveProps) {
     </svg>
   );
 }
+
+export function IconOrder({ active }: ActiveProps) {
+  const c = active ? TOKENS.ink : TOKENS.inkMuted;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="4" width="14" height="17" rx="2" stroke={c} strokeWidth="1.6" />
+      <path d="M9 4 h6 v2 h-6 z" stroke={c} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M8.5 11 H15.5 M8.5 14.5 H13" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconUsage({ active }: ActiveProps) {
+  const c = active ? TOKENS.ink : TOKENS.inkMuted;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M7 10 L7 4 M7 4 L4.5 6.5 M7 4 L9.5 6.5" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 14 L17 20 M17 20 L14.5 17.5 M17 20 L19.5 17.5" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconCatalog({ active }: ActiveProps) {
+  const c = active ? TOKENS.ink : TOKENS.inkMuted;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M4 6 a2 2 0 0 1 2-2 h6 l8 8 -8 8 -8-8 z" stroke={c} strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="1.3" fill={c} />
+    </svg>
+  );
+}
+
+export function IconUsers({ active }: ActiveProps) {
+  const c = active ? TOKENS.ink : TOKENS.inkMuted;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="8" r="3" stroke={c} strokeWidth="1.6" />
+      <path d="M3 19 C 4 15 6.5 13.5 9 13.5 C 11.5 13.5 14 15 15 19" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M16 6.5 a3 3 0 0 1 0 5.6 M17 13.6 c2 0.6 3.4 2.4 4 5" stroke={c} strokeWidth="1.6" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}

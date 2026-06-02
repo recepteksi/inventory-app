@@ -1,11 +1,22 @@
+import { parseMinimum } from '../../../domain/entities/Material.js';
 import type { Material, IMaterialRepository } from '../../../types/index.js';
 
 interface AppError extends Error { status?: number; }
 
+function str(v: unknown, fallback: string | undefined): string | undefined {
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : fallback;
+}
+
+/**
+ * Updates a material. Everyone may change `minimum` (and the descriptive fields of
+ * "other" materials). Identifying properties — kind/diameter/grade for pipe &
+ * ventilation, and the geometry/kind/grade of isolation — may only be changed by
+ * an admin, matching the "yönetici cins + tür özelliklerine müdahale" requirement.
+ */
 export async function updateMaterial(
   id: string,
   payload: Record<string, unknown>,
-  { materialRepo }: { materialRepo: IMaterialRepository }
+  { materialRepo, isAdmin = false }: { materialRepo: IMaterialRepository; isAdmin?: boolean }
 ): Promise<Material> {
   const existing = await materialRepo.findById(id);
   if (!existing) {
@@ -14,22 +25,52 @@ export async function updateMaterial(
     throw err;
   }
 
-  const allowed: Partial<Material> =
-    existing.group === 'pipe'
-      ? { minimum: Number(payload['minimum']) }
-      : {
-          name: typeof payload['name'] === 'string' ? payload['name'].trim() : existing.name,
-          category: typeof payload['category'] === 'string' ? payload['category'] : existing.category,
-          unit: typeof payload['unit'] === 'string' ? payload['unit'] : existing.unit,
-          minimum: Number(payload['minimum']),
-        };
+  const updated: Material = { ...existing, minimum: parseMinimum(payload['minimum']) };
 
-  const updated: Material = { ...existing, ...allowed };
+  if (existing.group === 'other') {
+    updated.name = str(payload['name'], existing.name);
+    updated.category = str(payload['category'], existing.category);
+    updated.unit = str(payload['unit'], existing.unit) ?? existing.unit;
+  } else if (isAdmin) {
+    if (existing.group === 'pipe' || existing.group === 'ventilation') {
+      updated.diameter = str(payload['diameter'], existing.diameter);
+      updated.kind = str(payload['kind'], existing.kind) ?? existing.kind;
+      updated.grade = str(payload['grade'], existing.grade) ?? existing.grade;
+      if (existing.group === 'pipe') updated.unit = updated.kind === 'Boru' ? 'm' : 'adet';
+    } else if (existing.group === 'isolation') {
+      updated.kind = str(payload['kind'], existing.kind) ?? existing.kind;
+      updated.grade = str(payload['grade'], existing.grade);
+      updated.thickness = str(payload['thickness'], existing.thickness) ?? existing.thickness;
+      const shape = payload['shape'] === 'rect' || payload['shape'] === 'round'
+        ? payload['shape'] as 'round' | 'rect'
+        : existing.shape;
+      updated.shape = shape;
+      if (shape === 'round') {
+        updated.diameter = str(payload['diameter'], existing.diameter);
+        delete updated.width;
+        delete updated.height;
+      } else {
+        updated.width = str(payload['width'], existing.width);
+        updated.height = str(payload['height'], existing.height);
+        delete updated.diameter;
+      }
+    }
+  }
 
-  if (existing.group === 'other' && payload['name']) {
+  const identityChanged =
+    updated.name !== existing.name ||
+    updated.kind !== existing.kind ||
+    updated.diameter !== existing.diameter ||
+    updated.grade !== existing.grade ||
+    updated.shape !== existing.shape ||
+    updated.width !== existing.width ||
+    updated.height !== existing.height ||
+    updated.thickness !== existing.thickness;
+
+  if (identityChanged) {
     const isDuplicate = await materialRepo.checkDuplicate(updated);
     if (isDuplicate) {
-      const err: AppError = new Error('This material name is already registered');
+      const err: AppError = new Error('This material is already registered');
       err.status = 409;
       throw err;
     }

@@ -6,7 +6,7 @@ import { MaterialGlyph } from '../components/ui/MaterialGlyph.tsx';
 import { WorkerAvatar } from '../components/ui/WorkerAvatar.tsx';
 import { useStore } from '../store/store.tsx';
 import { formatDate } from '../../utils/formatDate.ts';
-import { getMaterialName } from '../../domain/entities/material.ts';
+import { getMaterialName, isolationSize } from '../../domain/entities/material.ts';
 import { t } from '../../i18n/tr.ts';
 import type { Material, Movement } from '../../types/index.ts';
 
@@ -55,16 +55,18 @@ function SubHeader({ children }: { children: React.ReactNode }) {
 
 interface BigBarProps {
   stock: number;
-  min: number;
+  min?: number;
   color: string;
 }
 
 function BigBar({ stock, min, color }: BigBarProps) {
-  const ratio = Math.min(stock / (min * 2 || 1), 1);
+  const tracked = min != null && min > 0;
+  const denom = tracked ? (min as number) * 2 : Math.max(stock, 1);
+  const ratio = Math.min(stock / denom, 1);
   return (
     <div style={{ width: '100%', height: 8, background: TOKENS.lineSoft, borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${ratio * 100}%`, background: color, borderRadius: 4 }} />
-      <div style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 1.5, background: TOKENS.ink, opacity: 0.5 }} />
+      {tracked && <div style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 1.5, background: TOKENS.ink, opacity: 0.5 }} />}
     </div>
   );
 }
@@ -129,6 +131,7 @@ export function DetailPage({ id, open, goBack }: DetailPageProps) {
   );
 
   const d = stockStatus(m);
+  const minLabel = m.minimum != null ? `${m.minimum} ${m.unit}` : t('detailPage.noMinimum');
   const movements = movementsFor(id);
   const totalDelivered = movements.filter((h) => h.type === 'delivery').reduce((s, h) => s + h.quantity, 0);
   const totalUsed = movements.filter((h) => h.type === 'usage').reduce((s, h) => s + h.quantity, 0);
@@ -178,17 +181,21 @@ export function DetailPage({ id, open, goBack }: DetailPageProps) {
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${TOKENS.lineSoft}` }}>
               <BigBar stock={m.stock} min={m.minimum} color={d.color} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontFamily: TOKENS.mono, fontSize: 11, color: TOKENS.inkMuted }}>
-                <span>0</span><span>min {m.minimum}</span><span>{m.minimum * 2}</span>
+                {m.minimum != null && m.minimum > 0
+                  ? <><span>0</span><span>min {m.minimum}</span><span>{m.minimum * 2}</span></>
+                  : <span>{t('detailPage.noMinimum')}</span>}
               </div>
             </div>
           </div>
 
           <div style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, overflow: 'hidden' }}>
             <SubHeader>{t('detailPage.sectionProps')}</SubHeader>
-            {m.kind ? (
-              <><Row k={t('detailPage.propDiameter')} v={m.diameter} /><Row k={t('detailPage.propKind')} v={m.kind} /><Row k={t('detailPage.propGrade')} v={m.grade} /><Row k={t('detailPage.propUnit')} v={m.unit} /><Row k={t('detailPage.propMinStock')} v={`${m.minimum} ${m.unit}`} last /></>
+            {m.group === 'isolation' ? (
+              <><Row k={t('detailPage.propKind')} v={m.kind} />{m.grade && <Row k={t('detailPage.propGrade')} v={m.grade} />}<Row k={t('detailPage.propSize')} v={isolationSize(m)} /><Row k={t('detailPage.propThickness')} v={`${m.thickness} mm`} /><Row k={t('detailPage.propUnit')} v={m.unit} /><Row k={t('detailPage.propMinStock')} v={minLabel} last /></>
+            ) : m.kind ? (
+              <>{m.diameter && <Row k={t('detailPage.propDiameter')} v={m.diameter} />}<Row k={t('detailPage.propKind')} v={m.kind} /><Row k={t('detailPage.propGrade')} v={m.grade} /><Row k={t('detailPage.propUnit')} v={m.unit} /><Row k={t('detailPage.propMinStock')} v={minLabel} last /></>
             ) : (
-              <><Row k={t('detailPage.propCategory')} v={m.category} /><Row k={t('detailPage.propUnit')} v={m.unit} /><Row k={t('detailPage.propMinStock')} v={`${m.minimum} ${m.unit}`} last /></>
+              <><Row k={t('detailPage.propCategory')} v={m.category} /><Row k={t('detailPage.propUnit')} v={m.unit} /><Row k={t('detailPage.propMinStock')} v={minLabel} last /></>
             )}
           </div>
 

@@ -1,10 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from './_repos.js';
+import { requireAuth } from './_auth.js';
 
 interface AppError extends Error { status?: number; }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
+    requireAuth(req);
     const { movementRepo } = await getRepos();
 
     if (req.method === 'GET') {

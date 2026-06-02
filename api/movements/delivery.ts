@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from '../_repos.js';
+import { requireAuth } from '../_auth.js';
 import { recordDelivery } from '../../server/application/usecases/movement/recordDelivery.js';
 
 interface AppError extends Error { status?: number; }
@@ -10,6 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
   try {
+    requireAuth(req);
     const { materialRepo, movementRepo } = await getRepos();
     const result = await recordDelivery(
       req.body as Record<string, unknown>,

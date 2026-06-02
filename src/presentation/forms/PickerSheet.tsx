@@ -13,8 +13,8 @@ interface PickerSheetProps {
 
 export function PickerSheet({ onClose, onPick }: PickerSheetProps) {
   const [q, setQ] = useState('');
-  const { pipeFittings, otherMaterials } = useStore();
-  const all = [...pipeFittings, ...otherMaterials];
+  const { allMaterials } = useStore();
+  const all = allMaterials();
   const filtered = q
     ? all.filter((m) => getMaterialName(m).toLowerCase().includes(q.toLowerCase()))
     : all;

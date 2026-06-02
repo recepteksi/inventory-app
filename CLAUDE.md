@@ -169,3 +169,36 @@ POST   /api/movements/kullanim     → 201 { movement, updatedMaterial } | 400 i
 `stok` = stock quantity · `geliş` = incoming delivery · `kullanım` = usage · `hareket` = movement/transaction · `usta` = craftsman/worker · `malzeme` = material · `boru` = pipe · `fitting` = fitting · `çap` = diameter · `cins` = material type (Siyah/Galvaniz/Paslanmaz) · `tür` = item type (Boru/Dirsek/Tee/Manşon)
 
 Stock status thresholds (`stokDurum` in `src/domain/entities/material.js`): `AZALDI` (red) when `stok < minimum`; `TAKİP` (amber) when `stok < minimum * 1.5`; `STOKTA` (green) otherwise.
+
+---
+
+## Recent additions (auth, sections, orders, usages, catalog)
+
+The app now requires login and ships several new modules. Local dev of the API uses `vercel dev` (Vite alone does not serve `/api`). There is no automated test suite; verify with `npm run typecheck`, `npm run lint`, and `npm run build`.
+
+### Authentication & roles
+- `users` collection. Passwords hashed with scrypt (`server/infrastructure/security/password.ts`). Sessions are HMAC-signed httpOnly cookies (`api/_auth.ts`, `SESSION_SECRET`).
+- Roles: `admin` | `normal`. `requireAuth` / `requireRole(req,'admin')` guard the API. Frontend `AuthProvider` (`src/presentation/auth/`) gates the app behind `LoginPage`.
+- Seed the first admin: `node server/migrations/seedAdmin.ts` (uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_NAME`).
+
+### Material sections
+- `Material.group`: `pipe | other | ventilation | isolation`. Isolation adds `shape` (`round`|`rect`), `diameter` or `width`/`height`, and `thickness`. `minimum` is now optional (undefined = not low-stock tracked).
+- Admins can edit identifying properties (tür/çap/cins, isolation geometry) via `EditMaterialForm`; normal users edit only `minimum` (and the descriptive fields of "other").
+
+### Catalog (selectable options)
+- `catalog` collection drives the chip option lists. Defaults live in `src/presentation/store/defaultOptions.ts`; admins add/remove values on the Catalog page. `GET /api/catalog` (auth), `POST`/`DELETE` (admin).
+
+### Orders
+- `orders` collection. `createOrder` rejects past `orderDate`. Approving an order records a delivery for each item and marks it `approved` (`approveOrder`). New-order notification is logged (`server/infrastructure/notify.ts`); email delivery is a TODO extension point.
+
+### Usages
+- Batch usage: one worker + one job + up to 10 materials in a single submission (`recordUsageBatch`, atomic stock pre-validation, shared `batchId`). The Usages page groups movements by `batchId`.
+
+### New API endpoints
+```
+POST /api/auth/login · POST /api/auth/logout · GET /api/auth/me
+GET/POST /api/users · PUT/DELETE /api/users/:id            (admin)
+GET/POST /api/catalog · DELETE /api/catalog/:id            (POST/DELETE admin)
+GET/POST /api/orders  · PUT /api/orders/:id (approve) · DELETE /api/orders/:id
+POST /api/movements/usage-batch
+```
