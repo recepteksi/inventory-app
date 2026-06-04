@@ -112,6 +112,17 @@ export function IconCatalog({ active }: ActiveProps) {
   );
 }
 
+export function IconSite({ active }: ActiveProps) {
+  const c = active ? TOKENS.ink : TOKENS.inkMuted;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M4 21 V9 L11 4 L18 9 V21" stroke={c} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M3 21 H21" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M9 21 V15 H13 V21" stroke={c} strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconUsers({ active }: ActiveProps) {
   const c = active ? TOKENS.ink : TOKENS.inkMuted;
   return (

@@ -15,6 +15,7 @@ export function todayIsoDate(): string {
 }
 
 export function buildOrder({
+  siteId,
   items,
   orderDate,
   supplier,
@@ -23,6 +24,7 @@ export function buildOrder({
   createdById,
   id,
 }: {
+  siteId: string;
   items: OrderItem[];
   orderDate: string;
   supplier?: string;
@@ -32,6 +34,7 @@ export function buildOrder({
   id?: string;
 }): Order {
   if (!items.length) throw bad('An order must contain at least one item');
+  if (!siteId) throw bad('siteId is required');
   if (!orderDate) throw bad('orderDate is required');
   // ISO date strings compare lexicographically — guard against past dates.
   if (orderDate < todayIsoDate()) throw bad('Order date cannot be in the past');
@@ -39,6 +42,7 @@ export function buildOrder({
 
   const order: Order = {
     id: id ?? `ord-${randomUUID().slice(0, 8)}`,
+    siteId,
     items,
     status: 'pending',
     orderDate,

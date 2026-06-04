@@ -11,7 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const { materialRepo, orderRepo } = await getRepos();
 
     if (req.method === 'GET') {
-      res.json(await orderRepo.findAll());
+      const siteId = req.query['siteId'] as string | undefined;
+      res.json(await orderRepo.findAll(siteId));
       return;
     }
 

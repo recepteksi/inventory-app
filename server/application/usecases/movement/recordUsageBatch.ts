@@ -46,9 +46,12 @@ export async function recordUsageBatch(
   const batchId = `bt-${randomUUID().slice(0, 8)}`;
   const movements: Movement[] = [];
   for (const i of items) {
+    // siteId is derived from each material — never trusted from the payload.
+    const material = materials.get(i.materialId)!;
     const movement: Movement = {
       id: `mv-${randomUUID().slice(0, 8)}`,
       materialId: i.materialId,
+      siteId: material.siteId,
       type: 'usage',
       quantity: i.quantity,
       date,

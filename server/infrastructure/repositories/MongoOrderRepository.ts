@@ -6,8 +6,9 @@ export function createMongoOrderRepository(db: Db): IOrderRepository {
   const proj = { projection: { _id: 0 } };
 
   return {
-    async findAll(): Promise<Order[]> {
-      return col.find({}, proj).toArray() as Promise<Order[]>;
+    async findAll(siteId?: string): Promise<Order[]> {
+      const filter = siteId ? { siteId } : {};
+      return col.find(filter, proj).toArray() as Promise<Order[]>;
     },
 
     async findById(id: string): Promise<Order | null> {
@@ -16,6 +17,10 @@ export function createMongoOrderRepository(db: Db): IOrderRepository {
 
     async countByMaterialId(materialId: string): Promise<number> {
       return col.countDocuments({ 'items.materialId': materialId });
+    },
+
+    async existsBySite(siteId: string): Promise<boolean> {
+      return (await col.countDocuments({ siteId }, { limit: 1 })) > 0;
     },
 
     async create(data: Order): Promise<Order> {

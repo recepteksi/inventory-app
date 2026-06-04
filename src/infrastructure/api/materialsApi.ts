@@ -3,7 +3,8 @@ import type { Material, MaterialsResponse } from '../../types/index.ts';
 
 /** Material CRUD endpoints. */
 export const materialsApi = {
-  getAll: (): Promise<MaterialsResponse> => apiFetch<MaterialsResponse>('/materials'),
+  getAll: (siteId: string): Promise<MaterialsResponse> =>
+    apiFetch<MaterialsResponse>(`/materials?siteId=${encodeURIComponent(siteId)}`),
 
   getById: (id: string): Promise<Material> => apiFetch<Material>(`/materials/${id}`),
 

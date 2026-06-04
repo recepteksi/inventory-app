@@ -25,7 +25,8 @@ export async function recordDelivery(
     throw err;
   }
 
-  const movement = buildDelivery(p);
+  // siteId is derived from the target material — never trusted from the payload.
+  const movement = buildDelivery({ ...p, siteId: material.siteId });
   if (p._note) movement.note = p._note;
   await movementRepo.create(movement);
 

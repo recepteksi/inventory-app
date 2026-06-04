@@ -1,6 +1,6 @@
-import { IconBox, IconPerson, IconOrder, IconUsage, IconCatalog, IconUsers } from '../ui/Icons.tsx';
+import { IconBox, IconPerson, IconOrder, IconUsage, IconCatalog, IconUsers, IconSite } from '../ui/Icons.tsx';
 
-export type NavIconKind = 'box' | 'person' | 'order' | 'usage' | 'catalog' | 'users';
+export type NavIconKind = 'box' | 'person' | 'order' | 'usage' | 'catalog' | 'users' | 'site';
 
 interface NavIconProps {
   kind: NavIconKind;
@@ -15,6 +15,7 @@ export function NavIcon({ kind, active }: NavIconProps) {
     case 'usage': return <IconUsage active={active} />;
     case 'catalog': return <IconCatalog active={active} />;
     case 'users': return <IconUsers active={active} />;
+    case 'site': return <IconSite active={active} />;
     default: return null;
   }
 }

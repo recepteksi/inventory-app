@@ -1,8 +1,17 @@
 /** A material section. Each section is shown as its own tab in the UI. */
 export type MaterialGroup = 'pipe' | 'other' | 'ventilation' | 'isolation';
 
+/** A construction site (şantiye). Materials, movements, and orders are scoped to one. */
+export interface Site {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Material {
   id: string;
+  /** The site (şantiye) this material row belongs to. Stock is per-site. */
+  siteId: string;
   group: MaterialGroup;
   /** Pipe / fitting / ventilation properties */
   diameter?: string;
@@ -34,6 +43,8 @@ export interface Worker {
 export interface Movement {
   id: string;
   materialId: string;
+  /** The site (şantiye) of the target material. Derived from the material at write time. */
+  siteId: string;
   workerId?: string;
   type: 'delivery' | 'usage';
   quantity: number;
@@ -77,6 +88,8 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  /** The site (şantiye) this order belongs to. */
+  siteId: string;
   items: OrderItem[];
   status: OrderStatus;
   /** Requested delivery date (YYYY-MM-DD). Cannot be in the past. */
@@ -119,13 +132,16 @@ export interface BatchUsageResult {
 }
 
 export interface IMaterialRepository {
-  findAll(): Promise<MaterialsResponse>;
+  /** When siteId is given, returns only that site's materials; otherwise all sites. */
+  findAll(siteId?: string): Promise<MaterialsResponse>;
   findById(id: string): Promise<Material | null>;
   create(data: Partial<Material>): Promise<Material>;
   update(id: string, data: Partial<Material>): Promise<Material | null>;
   delete(id: string): Promise<void>;
   checkDuplicate(query: Partial<Material>): Promise<Material | null>;
   updateStock(id: string, newStock: number): Promise<Material>;
+  /** Returns true when any material row references the given site. */
+  existsBySite(siteId: string): Promise<boolean>;
 }
 
 export interface IWorkerRepository {
@@ -137,12 +153,15 @@ export interface IWorkerRepository {
 }
 
 export interface IMovementRepository {
-  findAll(): Promise<Movement[]>;
+  /** When siteId is given, returns only that site's movements; otherwise all sites. */
+  findAll(siteId?: string): Promise<Movement[]>;
   findByMaterialId(materialId: string): Promise<Movement[]>;
-  findByWorkerId(workerId: string): Promise<Movement[]>;
+  findByWorkerId(workerId: string, siteId?: string): Promise<Movement[]>;
   create(data: Movement): Promise<Movement>;
   countByMaterialId(materialId: string): Promise<number>;
   countByWorkerId(workerId: string): Promise<number>;
+  /** Returns true when any movement references the given site. */
+  existsBySite(siteId: string): Promise<boolean>;
 }
 
 export interface IUserRepository {
@@ -156,13 +175,27 @@ export interface IUserRepository {
 }
 
 export interface IOrderRepository {
-  findAll(): Promise<Order[]>;
+  /** When siteId is given, returns only that site's orders; otherwise all sites. */
+  findAll(siteId?: string): Promise<Order[]>;
   findById(id: string): Promise<Order | null>;
   /** Counts orders that contain an item referencing the given material id. */
   countByMaterialId(materialId: string): Promise<number>;
   create(data: Order): Promise<Order>;
   update(id: string, data: Partial<Order>): Promise<Order | null>;
   delete(id: string): Promise<boolean>;
+  /** Returns true when any order references the given site. */
+  existsBySite(siteId: string): Promise<boolean>;
+}
+
+export interface ISiteRepository {
+  findAll(): Promise<Site[]>;
+  findById(id: string): Promise<Site | null>;
+  create(data: Site): Promise<Site>;
+  update(id: string, data: Partial<Site>): Promise<Site | null>;
+  /** Returns true when a document was actually removed. */
+  delete(id: string): Promise<boolean>;
+  /** Returns a site with a matching (case-insensitive) name, or null. */
+  findByName(name: string): Promise<Site | null>;
 }
 
 export interface ICatalogRepository {
@@ -181,4 +214,5 @@ export interface Repos {
   userRepo: IUserRepository;
   orderRepo: IOrderRepository;
   catalogRepo: ICatalogRepository;
+  siteRepo: ISiteRepository;
 }

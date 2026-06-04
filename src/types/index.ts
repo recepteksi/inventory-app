@@ -1,8 +1,16 @@
 /** A material section. Each section is shown as its own tab in the UI. */
 export type MaterialGroup = 'pipe' | 'other' | 'ventilation' | 'isolation';
 
+/** A construction site (şantiye). Materials, movements and orders are scoped to one. */
+export interface Site {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Material {
   id: string;
+  siteId: string;
   group: MaterialGroup;
   diameter?: string;
   kind?: string;
@@ -30,6 +38,7 @@ export interface Worker {
 
 export interface Movement {
   id: string;
+  siteId: string;
   materialId: string;
   workerId?: string;
   type: 'delivery' | 'usage';
@@ -62,6 +71,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  siteId: string;
   items: OrderItem[];
   status: OrderStatus;
   orderDate: string;
@@ -101,7 +111,7 @@ export interface BatchUsageResult {
   updatedMaterials: Material[];
 }
 
-export type Page = 'stock' | 'workers' | 'usages' | 'orders' | 'catalog' | 'users';
+export type Page = 'stock' | 'workers' | 'usages' | 'orders' | 'catalog' | 'users' | 'sites';
 
 export type ModalKind =
   | 'delivery'

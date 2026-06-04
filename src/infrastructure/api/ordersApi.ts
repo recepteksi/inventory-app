@@ -3,7 +3,8 @@ import type { Order } from '../../types/index.ts';
 
 /** Purchase-order endpoints. */
 export const ordersApi = {
-  getAll: (): Promise<Order[]> => apiFetch<Order[]>('/orders'),
+  getAll: (siteId: string): Promise<Order[]> =>
+    apiFetch<Order[]>(`/orders?siteId=${encodeURIComponent(siteId)}`),
 
   create: (payload: Record<string, unknown>): Promise<Order> =>
     apiFetch<Order>('/orders', { method: 'POST', body: payload }),

@@ -10,6 +10,7 @@ const NAV: { id: Page; label: string; icon: NavIconKind; adminOnly?: boolean }[]
   { id: 'orders',  label: tr.nav.orders,  icon: 'order'   },
   { id: 'workers', label: tr.nav.workers, icon: 'person'  },
   { id: 'catalog', label: tr.nav.catalog, icon: 'catalog', adminOnly: true },
+  { id: 'sites',   label: tr.nav.sites,   icon: 'site',    adminOnly: true },
   { id: 'users',   label: tr.nav.users,   icon: 'users',   adminOnly: true },
 ];
 

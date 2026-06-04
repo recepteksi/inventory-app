@@ -14,6 +14,7 @@ export async function createOrder(
   { materialRepo, orderRepo }: { materialRepo: IMaterialRepository; orderRepo: IOrderRepository }
 ): Promise<Order> {
   const rawItems = Array.isArray(payload['items']) ? (payload['items'] as RawItem[]) : [];
+  const siteId = String(payload['siteId'] ?? '');
   const orderDate = String(payload['orderDate'] ?? '');
   const supplier = typeof payload['supplier'] === 'string' ? payload['supplier'].trim() : undefined;
   const note = typeof payload['note'] === 'string' ? payload['note'].trim() : undefined;
@@ -36,7 +37,7 @@ export async function createOrder(
     });
   }
 
-  const order = buildOrder({ items, orderDate, supplier, note, createdBy, createdById });
+  const order = buildOrder({ siteId, items, orderDate, supplier, note, createdBy, createdById });
   await orderRepo.create(order);
   await notifyOrderCreated(order);
   return order;

@@ -13,6 +13,7 @@ import { OrdersPage } from './presentation/pages/OrdersPage.tsx';
 import { UsagesPage } from './presentation/pages/UsagesPage.tsx';
 import { CatalogPage } from './presentation/pages/CatalogPage.tsx';
 import { UsersPage } from './presentation/pages/UsersPage.tsx';
+import { SitesPage } from './presentation/pages/SitesPage.tsx';
 import { DeliveryForm } from './presentation/forms/DeliveryForm.tsx';
 import { UsageForm } from './presentation/forms/UsageForm.tsx';
 import { BatchUsageForm } from './presentation/forms/BatchUsageForm.tsx';
@@ -61,6 +62,8 @@ export default function App() {
     main = <CatalogPage />;
   } else if (page === 'users' && isAdmin) {
     main = <UsersPage />;
+  } else if (page === 'sites' && isAdmin) {
+    main = <SitesPage />;
   } else {
     main = <StockPage open={open} />;
   }

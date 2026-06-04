@@ -6,8 +6,9 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
   const proj = { projection: { _id: 0 } };
 
   return {
-    async findAll(): Promise<MaterialsResponse> {
-      const all = await col.find({}, proj).toArray() as Material[];
+    async findAll(siteId?: string): Promise<MaterialsResponse> {
+      const filter = siteId ? { siteId } : {};
+      const all = await col.find(filter, proj).toArray() as Material[];
       return {
         pipeFittings: all.filter((m) => m.group === 'pipe'),
         otherMaterials: all.filter((m) => m.group === 'other'),
@@ -18,6 +19,10 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
 
     async findById(id: string): Promise<Material | null> {
       return col.findOne({ id }, proj) as Promise<Material | null>;
+    },
+
+    async existsBySite(siteId: string): Promise<boolean> {
+      return (await col.countDocuments({ siteId }, { limit: 1 })) > 0;
     },
 
     async create(data: Partial<Material>): Promise<Material> {
@@ -48,9 +53,10 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
       const notSelf = { id: { $ne: material.id } };
       let filter: Record<string, unknown>;
       if (material.group === 'pipe' || material.group === 'ventilation') {
-        filter = { group: material.group, diameter: material.diameter ?? null, size: material.size ?? null, kind: material.kind, grade: material.grade, ...notSelf };
+        filter = { siteId: material.siteId, group: material.group, diameter: material.diameter ?? null, size: material.size ?? null, kind: material.kind, grade: material.grade, ...notSelf };
       } else if (material.group === 'isolation') {
         filter = {
+          siteId: material.siteId,
           group: 'isolation',
           kind: material.kind,
           shape: material.shape,
@@ -61,7 +67,7 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
           ...notSelf,
         };
       } else {
-        filter = { group: 'other', name: { $regex: new RegExp(`^${material.name ?? ''}$`, 'i') }, ...notSelf };
+        filter = { siteId: material.siteId, group: 'other', name: { $regex: new RegExp(`^${material.name ?? ''}$`, 'i') }, ...notSelf };
       }
       return col.findOne(filter as Filter<Material>, proj) as Promise<Material | null>;
     },

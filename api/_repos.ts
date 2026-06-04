@@ -5,6 +5,7 @@ import { createMongoMovementRepository } from '../server/infrastructure/reposito
 import { createMongoUserRepository } from '../server/infrastructure/repositories/MongoUserRepository.js';
 import { createMongoOrderRepository } from '../server/infrastructure/repositories/MongoOrderRepository.js';
 import { createMongoCatalogRepository } from '../server/infrastructure/repositories/MongoCatalogRepository.js';
+import { createMongoSiteRepository } from '../server/infrastructure/repositories/MongoSiteRepository.js';
 import type { Repos } from '../server/types/index.js';
 
 export async function getRepos(): Promise<Repos> {
@@ -16,5 +17,6 @@ export async function getRepos(): Promise<Repos> {
     userRepo: createMongoUserRepository(db),
     orderRepo: createMongoOrderRepository(db),
     catalogRepo: createMongoCatalogRepository(db),
+    siteRepo: createMongoSiteRepository(db),
   };
 }

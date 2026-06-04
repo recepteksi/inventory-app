@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { materialsApi } from '../../infrastructure/api/materialsApi.ts';
 import { workersApi } from '../../infrastructure/api/workersApi.ts';
 import { movementsApi } from '../../infrastructure/api/movementsApi.ts';
 import { catalogApi } from '../../infrastructure/api/catalogApi.ts';
 import { ordersApi } from '../../infrastructure/api/ordersApi.ts';
+import { sitesApi } from '../../infrastructure/api/sitesApi.ts';
 import { getMaterialName } from '../../domain/entities/material.ts';
 import type {
-  Material, Worker, Movement, Order, CatalogEntry, CatalogField, MaterialGroup,
+  Material, Worker, Movement, Order, Site, CatalogEntry, CatalogField, MaterialGroup,
   MaterialsResponse, MovementResult, BatchUsageResult,
 } from '../../types/index.ts';
+
+const SITE_STORAGE_KEY = 'selectedSiteId';
 
 type GroupKey = 'pipeFittings' | 'otherMaterials' | 'ventilation' | 'isolation';
 
@@ -28,6 +31,8 @@ interface StoreState {
   movements: Movement[];
   orders: Order[];
   catalog: CatalogEntry[];
+  sites: Site[];
+  selectedSiteId: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -35,6 +40,11 @@ interface StoreState {
 type StoreAction =
   | { type: 'LOADED'; payload: Partial<StoreState> }
   | { type: 'MOVEMENTS_LOADED'; payload: Movement[] }
+  | { type: 'SITE_SELECTED'; payload: string }
+  | { type: 'SITE_DATA_LOADED'; payload: Partial<StoreState> }
+  | { type: 'SITE_ADDED'; payload: Site }
+  | { type: 'SITE_UPDATED'; payload: Site }
+  | { type: 'SITE_DELETED'; payload: string }
   | { type: 'ERROR'; payload: string }
   | { type: 'MATERIAL_ADDED'; payload: Material }
   | { type: 'MATERIAL_UPDATED'; payload: Material }
@@ -73,11 +83,17 @@ interface StoreValue extends StoreState {
   addOrder: (payload: Record<string, unknown>) => Promise<Order>;
   approveOrder: (id: string) => Promise<Order>;
   removeOrder: (id: string) => Promise<void>;
+  currentSite: Site | null;
+  selectSite: (id: string) => Promise<void>;
+  addSite: (payload: Record<string, unknown>) => Promise<Site>;
+  editSite: (id: string, payload: Record<string, unknown>) => Promise<Site>;
+  removeSite: (id: string) => Promise<void>;
 }
 
 const initialState: StoreState = {
   pipeFittings: [], otherMaterials: [], ventilation: [], isolation: [],
   workers: [], movements: [], orders: [], catalog: [],
+  sites: [], selectedSiteId: null,
   loading: true, error: null,
 };
 
@@ -93,12 +109,49 @@ function mapMaterials(state: StoreState, fn: (list: Material[]) => Material[]): 
   };
 }
 
+/** Site-scoped slices reset to empty when no site is active. */
+const EMPTY_SITE_DATA: Pick<StoreState, GroupKey | 'movements' | 'orders'> = {
+  pipeFittings: [], otherMaterials: [], ventilation: [], isolation: [],
+  movements: [], orders: [],
+};
+
+/** Fetches the materials, movements and orders for one site in parallel. */
+async function fetchSiteData(siteId: string): Promise<Pick<StoreState, GroupKey | 'movements' | 'orders'>> {
+  const [materials, movements, orders] = await Promise.all([
+    materialsApi.getAll(siteId),
+    movementsApi.getAll(siteId),
+    ordersApi.getAll(siteId),
+  ] as [Promise<MaterialsResponse>, Promise<Movement[]>, Promise<Order[]>]);
+  return {
+    pipeFittings: materials.pipeFittings,
+    otherMaterials: materials.otherMaterials,
+    ventilation: materials.ventilation,
+    isolation: materials.isolation,
+    movements: [...movements].sort((a, b) => b.date.localeCompare(a.date)),
+    orders: [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  };
+}
+
 function reducer(state: StoreState, action: StoreAction): StoreState {
   switch (action.type) {
     case 'LOADED':
       return { ...state, loading: false, error: null, ...action.payload };
     case 'MOVEMENTS_LOADED':
       return { ...state, movements: [...action.payload].sort((a, b) => b.date.localeCompare(a.date)) };
+    case 'SITE_SELECTED':
+      return { ...state, selectedSiteId: action.payload };
+    case 'SITE_DATA_LOADED':
+      return { ...state, ...action.payload };
+    case 'SITE_ADDED':
+      return { ...state, sites: [...state.sites, action.payload] };
+    case 'SITE_UPDATED':
+      return { ...state, sites: state.sites.map((s) => (s.id === action.payload.id ? action.payload : s)) };
+    case 'SITE_DELETED': {
+      const id = action.payload;
+      const sites = state.sites.filter((s) => s.id !== id);
+      const selectedSiteId = state.selectedSiteId === id ? (sites[0]?.id ?? null) : state.selectedSiteId;
+      return { ...state, sites, selectedSiteId };
+    }
     case 'ERROR':
       return { ...state, loading: false, error: action.payload };
     case 'MATERIAL_ADDED': {
@@ -157,27 +210,28 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // Mirror of selectedSiteId so thunks read the live value without stale closures.
+  const siteIdRef = useRef<string | null>(null);
+  useEffect(() => { siteIdRef.current = state.selectedSiteId; }, [state.selectedSiteId]);
+
   useEffect(() => {
+    // Global data (workers, catalog, sites) loads regardless of site. Site-scoped
+    // data (materials, movements, orders) loads only once an active site is known.
     Promise.all([
-      materialsApi.getAll(),
       workersApi.getAll(),
-      movementsApi.getAll(),
       catalogApi.getAll(),
-      ordersApi.getAll(),
-    ] as [Promise<MaterialsResponse>, Promise<Worker[]>, Promise<Movement[]>, Promise<CatalogEntry[]>, Promise<Order[]>])
-      .then(([materials, workers, movements, catalog, orders]) => {
+      sitesApi.getAll(),
+    ] as [Promise<Worker[]>, Promise<CatalogEntry[]>, Promise<Site[]>])
+      .then(async ([workers, catalog, sites]) => {
+        const stored = localStorage.getItem(SITE_STORAGE_KEY);
+        const selectedSiteId =
+          (stored && sites.some((s) => s.id === stored) ? stored : null) ?? sites[0]?.id ?? null;
+        if (selectedSiteId) localStorage.setItem(SITE_STORAGE_KEY, selectedSiteId);
+
+        const scoped = selectedSiteId ? await fetchSiteData(selectedSiteId) : EMPTY_SITE_DATA;
         dispatch({
           type: 'LOADED',
-          payload: {
-            pipeFittings: materials.pipeFittings,
-            otherMaterials: materials.otherMaterials,
-            ventilation: materials.ventilation,
-            isolation: materials.isolation,
-            workers,
-            movements: [...movements].sort((a, b) => b.date.localeCompare(a.date)),
-            catalog,
-            orders: [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-          },
+          payload: { workers, catalog, sites, selectedSiteId, ...scoped },
         });
       })
       .catch((err: Error) => dispatch({ type: 'ERROR', payload: err.message }));
@@ -250,10 +304,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addMaterial = useCallback(async (payload: Record<string, unknown>): Promise<Material> => {
-    const material = await materialsApi.create(payload);
+    const siteId = siteIdRef.current;
+    if (!siteId) throw new Error('Önce bir şantiye seçin.');
+    const material = await materialsApi.create({ ...payload, siteId });
     dispatch({ type: 'MATERIAL_ADDED', payload: material });
     if (Number(payload['openingStock']) > 0) {
-      const movements = await movementsApi.getAll();
+      const movements = await movementsApi.getAll(siteId);
       dispatch({ type: 'MOVEMENTS_LOADED', payload: movements });
     }
     return material;
@@ -299,16 +355,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addOrder = useCallback(async (payload: Record<string, unknown>): Promise<Order> => {
-    const order = await ordersApi.create(payload);
+    const siteId = siteIdRef.current;
+    if (!siteId) throw new Error('Önce bir şantiye seçin.');
+    const order = await ordersApi.create({ ...payload, siteId });
     dispatch({ type: 'ORDER_ADDED', payload: order });
     return order;
   }, []);
 
   const approveOrder = useCallback(async (id: string): Promise<Order> => {
+    const siteId = siteIdRef.current;
     const order = await ordersApi.approve(id);
     dispatch({ type: 'ORDER_UPDATED', payload: order });
+    if (!siteId) return order;
     // Approval records deliveries on the server — refresh stock + movements.
-    const [materials, movements] = await Promise.all([materialsApi.getAll(), movementsApi.getAll()]);
+    const [materials, movements] = await Promise.all([materialsApi.getAll(siteId), movementsApi.getAll(siteId)]);
     dispatch({
       type: 'LOADED',
       payload: {
@@ -327,6 +387,49 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ORDER_DELETED', payload: id });
   }, []);
 
+  const selectSite = useCallback(async (id: string): Promise<void> => {
+    if (siteIdRef.current === id) return;
+    siteIdRef.current = id;
+    localStorage.setItem(SITE_STORAGE_KEY, id);
+    dispatch({ type: 'SITE_SELECTED', payload: id });
+    const scoped = await fetchSiteData(id);
+    dispatch({ type: 'SITE_DATA_LOADED', payload: scoped });
+  }, []);
+
+  const addSite = useCallback(async (payload: Record<string, unknown>): Promise<Site> => {
+    const site = await sitesApi.create(payload);
+    dispatch({ type: 'SITE_ADDED', payload: site });
+    // First site created becomes the active one and pulls its (empty) data.
+    if (!siteIdRef.current) await selectSite(site.id);
+    return site;
+  }, [selectSite]);
+
+  const editSite = useCallback(async (id: string, payload: Record<string, unknown>): Promise<Site> => {
+    const site = await sitesApi.update(id, payload);
+    dispatch({ type: 'SITE_UPDATED', payload: site });
+    return site;
+  }, []);
+
+  const removeSite = useCallback(async (id: string): Promise<void> => {
+    await sitesApi.remove(id);
+    const wasActive = siteIdRef.current === id;
+    dispatch({ type: 'SITE_DELETED', payload: id });
+    if (wasActive) {
+      const next = state.sites.find((s) => s.id !== id)?.id ?? null;
+      siteIdRef.current = next;
+      if (next) {
+        localStorage.setItem(SITE_STORAGE_KEY, next);
+        const scoped = await fetchSiteData(next);
+        dispatch({ type: 'SITE_DATA_LOADED', payload: scoped });
+      } else {
+        localStorage.removeItem(SITE_STORAGE_KEY);
+        dispatch({ type: 'SITE_DATA_LOADED', payload: EMPTY_SITE_DATA });
+      }
+    }
+  }, [state.sites]);
+
+  const currentSite = state.sites.find((s) => s.id === state.selectedSiteId) ?? null;
+
   const value: StoreValue = {
     ...state,
     getMaterial, getWorker, materialsByGroup, allMaterials,
@@ -336,6 +439,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addWorker, editWorker, removeWorker,
     addCatalog, removeCatalog,
     addOrder, approveOrder, removeOrder,
+    currentSite, selectSite, addSite, editSite, removeSite,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -32,7 +32,8 @@ export async function recordUsage(
     throw err;
   }
 
-  const movement = buildUsage(p);
+  // siteId is derived from the target material — never trusted from the payload.
+  const movement = buildUsage({ ...p, siteId: material.siteId });
   await movementRepo.create(movement);
 
   const updatedMaterial = await materialRepo.updateStock(
