@@ -9,7 +9,7 @@ export function isolationSize(m: Pick<Material, 'shape' | 'diameter' | 'width' |
 
 /**
  * Returns the display name for a material.
- * - pipe / ventilation: "diameter grade kind"
+ * - pipe / ventilation: "grade kind diameter" (cins tür çap)
  * - isolation: "kind size · thickness mm"
  * - other: the free-form `name`
  */
@@ -19,7 +19,7 @@ export function getMaterialName(m: Material | null | undefined): string {
     return `${m.kind} ${isolationSize(m)} · ${m.thickness}mm`;
   }
   if (m.kind) {
-    return [m.size ?? m.diameter, m.grade, m.kind].filter(Boolean).join(' ');
+    return [m.grade, m.kind, m.size ?? m.diameter].filter(Boolean).join(' ');
   }
   return m.name ?? '—';
 }
