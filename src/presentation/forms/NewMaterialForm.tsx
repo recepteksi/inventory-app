@@ -34,6 +34,7 @@ export function NewMaterialForm({ preset, goBack }: NewMaterialFormProps) {
     ? (preset as MaterialGroup)
     : 'pipe';
   const [group, setGroup] = useState<MaterialGroup>(presetGroup);
+  const [size, setSize] = useState('');
   const [diameter, setDiameter] = useState('');
   const [kind, setKind] = useState('');
   const [grade, setGrade] = useState('');
@@ -57,18 +58,18 @@ export function NewMaterialForm({ preset, goBack }: NewMaterialFormProps) {
     : unit;
 
   const valid =
-    group === 'pipe' ? diameter && kind && grade
+    group === 'pipe' ? (diameter || size.trim()) && kind && grade
     : group === 'ventilation' ? kind && grade
     : group === 'isolation' ? kind && thickness && (shape === 'round' ? diameter : width && height)
     : category && name.trim().length > 1 && unit;
 
-  const reset = () => { setDiameter(''); setKind(''); setGrade(''); setCategory(''); setName(''); setUnit(''); setWidth(''); setHeight(''); setThickness(''); };
+  const reset = () => { setSize(''); setDiameter(''); setKind(''); setGrade(''); setCategory(''); setName(''); setUnit(''); setWidth(''); setHeight(''); setThickness(''); };
 
   const submit = async () => {
     if (!valid || loading) return;
     setLoading(true); setError('');
     try {
-      await addMaterial({ group, diameter, kind, grade, category, name, unit, shape, width, height, thickness, openingStock, minimum });
+      await addMaterial({ group, size, diameter, kind, grade, category, name, unit, shape, width, height, thickness, openingStock, minimum });
       setSubmitted(true);
     } catch (e) {
       setError((e as Error).message);
@@ -79,7 +80,7 @@ export function NewMaterialForm({ preset, goBack }: NewMaterialFormProps) {
 
   if (submitted) {
     const newName =
-      group === 'pipe' || group === 'ventilation' ? [diameter, grade, kind].filter(Boolean).join(' ')
+      group === 'pipe' || group === 'ventilation' ? [size.trim() || diameter, grade, kind].filter(Boolean).join(' ')
       : group === 'isolation' ? `${kind} ${shape === 'round' ? `Ø${diameter}` : `${width}×${height}`} · ${thickness}mm`
       : name;
     return <NewMaterialSuccess name={newName} groupLabel={GROUP_LABEL[group]} unit={autoUnit} openingStock={openingStock} minimum={minimum || '—'} goBack={goBack} />;
@@ -93,8 +94,11 @@ export function NewMaterialForm({ preset, goBack }: NewMaterialFormProps) {
 
       {(group === 'pipe' || group === 'ventilation') && (
         <>
-          <Field label={t('newMaterialForm.fieldDiameter')} optional={group === 'ventilation'}>
+          <Field label={t('newMaterialForm.fieldDiameter')} optional={group === 'ventilation' || !!size.trim()}>
             <ChipPicker value={diameter} onChange={setDiameter} options={catalogOptions(group, 'diameter')} />
+          </Field>
+          <Field label={t('newMaterialForm.fieldSize')} optional>
+            <TextInput value={size} onChange={setSize} placeholder={t('newMaterialForm.sizePlaceholder')} />
           </Field>
           <Field label={t('newMaterialForm.fieldKind')}><ChipPicker value={kind} onChange={setKind} options={catalogOptions(group, 'kind')} /></Field>
           <Field label={t('newMaterialForm.fieldGrade')}><ChipPicker value={grade} onChange={setGrade} options={catalogOptions(group, 'grade')} /></Field>

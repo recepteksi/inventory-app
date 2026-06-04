@@ -5,11 +5,19 @@ import { MaterialGlyph } from '../components/ui/MaterialGlyph.tsx';
 import { useStore } from '../store/store.tsx';
 import { getMaterialName } from '../../domain/entities/material.ts';
 import { t, tr } from '../../i18n/tr.ts';
+import type { MaterialGroup } from '../../types/index.ts';
 
 interface PickerSheetProps {
   onClose: () => void;
   onPick: (id: string) => void;
 }
+
+const SECTIONS: { id: MaterialGroup; label: string }[] = [
+  { id: 'pipe', label: 'Boru & Fittings' },
+  { id: 'ventilation', label: 'Havalandırma' },
+  { id: 'isolation', label: 'İzolasyon' },
+  { id: 'other', label: 'Diğer Malzeme' },
+];
 
 export function PickerSheet({ onClose, onPick }: PickerSheetProps) {
   const [q, setQ] = useState('');
@@ -18,6 +26,9 @@ export function PickerSheet({ onClose, onPick }: PickerSheetProps) {
   const filtered = q
     ? all.filter((m) => getMaterialName(m).toLowerCase().includes(q.toLowerCase()))
     : all;
+  const sections = SECTIONS
+    .map((s) => ({ ...s, items: filtered.filter((m) => m.group === s.id) }))
+    .filter((s) => s.items.length > 0);
 
   return (
     <div
@@ -45,21 +56,26 @@ export function PickerSheet({ onClose, onPick }: PickerSheetProps) {
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 20px 24px' }}>
-          {filtered.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => onPick(m.id)}
-              style={{ appearance: 'none', background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', borderBottom: `1px solid ${TOKENS.lineSoft}`, textAlign: 'left' }}
-            >
-              <MaterialGlyph material={m} size={34} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: TOKENS.font, fontSize: 14.5, color: TOKENS.ink }}>{getMaterialName(m)}</div>
-                <div style={{ fontFamily: TOKENS.mono, fontSize: 11, color: TOKENS.inkMuted }}>
-                  {tr.materialPicker.stockLabel.replace('{stock}', String(m.stock)).replace('{unit}', m.unit)}
-                </div>
-              </div>
-              <IconArrow />
-            </button>
+          {sections.map((s) => (
+            <div key={s.id}>
+              <div style={{ position: 'sticky', top: 0, background: TOKENS.bg, padding: '8px 4px 4px', fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.inkMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>{s.label}</div>
+              {s.items.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => onPick(m.id)}
+                  style={{ appearance: 'none', background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', borderBottom: `1px solid ${TOKENS.lineSoft}`, textAlign: 'left' }}
+                >
+                  <MaterialGlyph material={m} size={34} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: TOKENS.font, fontSize: 14.5, color: TOKENS.ink }}>{getMaterialName(m)}</div>
+                    <div style={{ fontFamily: TOKENS.mono, fontSize: 11, color: TOKENS.inkMuted }}>
+                      {tr.materialPicker.stockLabel.replace('{stock}', String(m.stock)).replace('{unit}', m.unit)}
+                    </div>
+                  </div>
+                  <IconArrow />
+                </button>
+              ))}
+            </div>
           ))}
           {filtered.length === 0 && (
             <div style={{ padding: 30, textAlign: 'center', color: TOKENS.inkMuted, fontFamily: TOKENS.font, fontSize: 14 }}>{t('materialPicker.noResults')}</div>

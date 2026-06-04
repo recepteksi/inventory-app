@@ -13,31 +13,38 @@ export function parseMinimum(minimum: unknown): number | undefined {
 
 export function createPipeFitting({
   diameter,
+  size,
   kind,
   grade,
   stock = 0,
   minimum,
   id,
 }: {
-  diameter: string;
+  diameter?: string;
+  size?: string;
   kind: string;
   grade: string;
   stock?: number;
   minimum?: unknown;
   id?: string;
 }): Material {
-  if (!diameter || !kind || !grade) throw new Error('diameter, kind, and grade are required');
+  // Either a standard diameter or a free-text special size identifies the item.
+  if ((!diameter && !size) || !kind || !grade) {
+    throw new Error('diameter (or size), kind, and grade are required');
+  }
   const unit = kind === 'Boru' ? 'm' : 'adet';
-  return {
+  const material: Material = {
     id: id ?? `bf-${randomUUID().slice(0, 8)}`,
     group: 'pipe',
     kind,
-    diameter,
     grade,
     stock: Number(stock),
     unit,
     minimum: parseMinimum(minimum),
   };
+  if (diameter) material.diameter = diameter;
+  if (size) material.size = size;
+  return material;
 }
 
 export function createOtherMaterial({
@@ -69,6 +76,7 @@ export function createOtherMaterial({
 
 export function createVentilation({
   diameter,
+  size,
   kind,
   grade,
   unit,
@@ -77,6 +85,7 @@ export function createVentilation({
   id,
 }: {
   diameter?: string;
+  size?: string;
   kind: string;
   grade: string;
   unit?: string;
@@ -95,6 +104,7 @@ export function createVentilation({
     minimum: parseMinimum(minimum),
   };
   if (diameter) material.diameter = diameter;
+  if (size) material.size = size;
   return material;
 }
 

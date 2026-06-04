@@ -48,7 +48,7 @@ export function createMongoMaterialRepository(db: Db): IMaterialRepository {
       const notSelf = { id: { $ne: material.id } };
       let filter: Record<string, unknown>;
       if (material.group === 'pipe' || material.group === 'ventilation') {
-        filter = { group: material.group, diameter: material.diameter ?? null, kind: material.kind, grade: material.grade, ...notSelf };
+        filter = { group: material.group, diameter: material.diameter ?? null, size: material.size ?? null, kind: material.kind, grade: material.grade, ...notSelf };
       } else if (material.group === 'isolation') {
         filter = {
           group: 'isolation',

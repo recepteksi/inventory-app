@@ -27,6 +27,7 @@ export function EditMaterialForm({ id, goBack }: EditMaterialFormProps) {
   const [category, setCategory] = useState(m?.category ?? '');
   const [unit, setUnit] = useState(m?.unit ?? '');
   const [diameter, setDiameter] = useState(m?.diameter ?? '');
+  const [size, setSize] = useState(m?.size ?? '');
   const [kind, setKind] = useState(m?.kind ?? '');
   const [grade, setGrade] = useState(m?.grade ?? '');
   const [shape, setShape] = useState<'round' | 'rect'>(m?.shape ?? 'round');
@@ -49,7 +50,7 @@ export function EditMaterialForm({ id, goBack }: EditMaterialFormProps) {
     if (!valid || loading) return;
     setLoading(true); setError('');
     try {
-      await editMaterial(id, { minimum, name, category, unit, diameter, kind, grade, shape, width, height, thickness });
+      await editMaterial(id, { minimum, name, category, unit, diameter, size, kind, grade, shape, width, height, thickness });
       goBack();
     } catch (e) {
       setError((e as Error).message);
@@ -78,7 +79,8 @@ export function EditMaterialForm({ id, goBack }: EditMaterialFormProps) {
       {canEditIdentity && isPipeLike && (
         <>
           <div style={{ fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.accent, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('editMaterialForm.adminLabel')}</div>
-          <Field label={t('newMaterialForm.fieldDiameter')} optional={m.group === 'ventilation'}><ChipPicker value={diameter} onChange={setDiameter} options={catalogOptions(m.group, 'diameter')} /></Field>
+          <Field label={t('newMaterialForm.fieldDiameter')} optional={m.group === 'ventilation' || !!size.trim()}><ChipPicker value={diameter} onChange={setDiameter} options={catalogOptions(m.group, 'diameter')} /></Field>
+          <Field label={t('newMaterialForm.fieldSize')} optional><TextInput value={size} onChange={setSize} placeholder={t('newMaterialForm.sizePlaceholder')} /></Field>
           <Field label={t('newMaterialForm.fieldKind')}><ChipPicker value={kind} onChange={setKind} options={catalogOptions(m.group, 'kind')} /></Field>
           <Field label={t('newMaterialForm.fieldGrade')}><ChipPicker value={grade} onChange={setGrade} options={catalogOptions(m.group, 'grade')} /></Field>
         </>

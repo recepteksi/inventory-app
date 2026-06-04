@@ -20,6 +20,7 @@ export function buildOrder({
   supplier,
   note,
   createdBy,
+  createdById,
   id,
 }: {
   items: OrderItem[];
@@ -27,6 +28,7 @@ export function buildOrder({
   supplier?: string;
   note?: string;
   createdBy: string;
+  createdById?: string;
   id?: string;
 }): Order {
   if (!items.length) throw bad('An order must contain at least one item');
@@ -43,6 +45,7 @@ export function buildOrder({
     createdBy,
     createdAt: new Date().toISOString(),
   };
+  if (createdById) order.createdById = createdById;
   if (supplier) order.supplier = supplier;
   if (note) order.note = note;
   return order;

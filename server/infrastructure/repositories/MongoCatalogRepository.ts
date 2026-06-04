@@ -19,8 +19,9 @@ export function createMongoCatalogRepository(db: Db): ICatalogRepository {
       return data;
     },
 
-    async delete(id: string): Promise<void> {
-      await col.deleteOne({ id });
+    async delete(id: string): Promise<boolean> {
+      const result = await col.deleteOne({ id });
+      return result.deletedCount > 0;
     },
 
     async exists(section: string, field: string, value: string): Promise<boolean> {

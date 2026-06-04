@@ -8,6 +8,8 @@ export interface Material {
   diameter?: string;
   kind?: string;
   grade?: string;
+  /** Free-text special size, used in place of diameter for non-standard items. */
+  size?: string;
   /** Other-material properties */
   name?: string;
   category?: string;
@@ -83,6 +85,8 @@ export interface Order {
   note?: string;
   /** Display name of the user who created the order. */
   createdBy: string;
+  /** Id of the user who created the order. Used for permission checks on delete. */
+  createdById?: string;
   createdAt: string;
   approvedAt?: string;
   approvedBy?: string;
@@ -154,16 +158,19 @@ export interface IUserRepository {
 export interface IOrderRepository {
   findAll(): Promise<Order[]>;
   findById(id: string): Promise<Order | null>;
+  /** Counts orders that contain an item referencing the given material id. */
+  countByMaterialId(materialId: string): Promise<number>;
   create(data: Order): Promise<Order>;
   update(id: string, data: Partial<Order>): Promise<Order | null>;
-  delete(id: string): Promise<void>;
+  delete(id: string): Promise<boolean>;
 }
 
 export interface ICatalogRepository {
   findAll(): Promise<CatalogEntry[]>;
   findById(id: string): Promise<CatalogEntry | null>;
   create(data: CatalogEntry): Promise<CatalogEntry>;
-  delete(id: string): Promise<void>;
+  /** Returns true when a document was actually removed. */
+  delete(id: string): Promise<boolean>;
   exists(section: string, field: string, value: string): Promise<boolean>;
 }
 

@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const id = req.query['id'] as string;
   try {
     const user = requireAuth(req);
-    const { materialRepo, movementRepo } = await getRepos();
+    const { materialRepo, movementRepo, orderRepo } = await getRepos();
 
     if (req.method === 'GET') {
       const material = await materialRepo.findById(id);
@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     if (req.method === 'DELETE') {
-      await deleteMaterial(id, { materialRepo, movementRepo });
+      await deleteMaterial(id, { materialRepo, movementRepo, orderRepo });
       res.status(204).end();
       return;
     }

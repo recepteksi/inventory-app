@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     if (req.method === 'POST') {
-      const order = await createOrder(req.body as Record<string, unknown>, user.name, { materialRepo, orderRepo });
+      const order = await createOrder(req.body as Record<string, unknown>, user.name, user.id, { materialRepo, orderRepo });
       res.status(201).json(order);
       return;
     }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TOKENS, btnPrimaryStyle, btnGhostStyle, btnDangerStyle } from '../components/ui/tokens.tsx';
 import { Pill } from '../components/ui/Pill.tsx';
 import { useStore } from '../store/store.tsx';
+import { useAuth } from '../auth/AuthProvider.tsx';
 import { formatDate } from '../../utils/formatDate.ts';
 import { t } from '../../i18n/tr.ts';
 
@@ -11,6 +12,7 @@ interface OrdersPageProps {
 
 export function OrdersPage({ open }: OrdersPageProps) {
   const { orders, approveOrder, removeOrder } = useStore();
+  const { user, isAdmin } = useAuth();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -55,6 +57,8 @@ export function OrdersPage({ open }: OrdersPageProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
           {orders.map((o) => {
             const approved = o.status === 'approved';
+            const isCreator = !!user && o.createdById === user.id;
+            const canDelete = approved ? isAdmin : (isAdmin || isCreator);
             return (
               <div key={o.id} style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${TOKENS.lineSoft}`, background: TOKENS.bg }}>
@@ -71,8 +75,8 @@ export function OrdersPage({ open }: OrdersPageProps) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {!approved && <button onClick={() => void approve(o.id)} disabled={busyId === o.id} style={{ ...btnPrimaryStyle, fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('ordersPage.approve')}</button>}
-                    <button onClick={() => void remove(o.id)} disabled={busyId === o.id} style={{ ...(approved ? btnGhostStyle : btnDangerStyle), fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('common.delete')}</button>
+                    {!approved && isAdmin && <button onClick={() => void approve(o.id)} disabled={busyId === o.id} style={{ ...btnPrimaryStyle, fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('ordersPage.approve')}</button>}
+                    {canDelete && <button onClick={() => void remove(o.id)} disabled={busyId === o.id} style={{ ...(approved ? btnGhostStyle : btnDangerStyle), fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('common.delete')}</button>}
                   </div>
                 </div>
                 <div>

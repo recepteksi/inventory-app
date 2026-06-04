@@ -34,9 +34,17 @@ export async function updateMaterial(
   } else if (isAdmin) {
     if (existing.group === 'pipe' || existing.group === 'ventilation') {
       updated.diameter = str(payload['diameter'], existing.diameter);
+      updated.size = str(payload['size'], existing.size);
       updated.kind = str(payload['kind'], existing.kind) ?? existing.kind;
       updated.grade = str(payload['grade'], existing.grade) ?? existing.grade;
       if (existing.group === 'pipe') updated.unit = updated.kind === 'Boru' ? 'm' : 'adet';
+      // Either a standard çap or a free-text özel ölçü must identify the malzeme;
+      // clearing both would persist an unidentifiable material (matches createPipeFitting).
+      if (!updated.diameter && !updated.size) {
+        const err: AppError = new Error('diameter (or size), kind, and grade are required');
+        err.status = 400;
+        throw err;
+      }
     } else if (existing.group === 'isolation') {
       updated.kind = str(payload['kind'], existing.kind) ?? existing.kind;
       updated.grade = str(payload['grade'], existing.grade);
@@ -61,6 +69,7 @@ export async function updateMaterial(
     updated.name !== existing.name ||
     updated.kind !== existing.kind ||
     updated.diameter !== existing.diameter ||
+    updated.size !== existing.size ||
     updated.grade !== existing.grade ||
     updated.shape !== existing.shape ||
     updated.width !== existing.width ||

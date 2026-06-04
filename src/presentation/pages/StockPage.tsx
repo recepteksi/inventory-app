@@ -79,17 +79,31 @@ interface StockPageProps {
 }
 
 export function StockPage({ open }: StockPageProps) {
-  const { pipeFittings, otherMaterials, ventilation, isolation, movements, materialsByGroup, catalogOptions } = useStore();
+  const { pipeFittings, otherMaterials, ventilation, isolation, movements, materialsByGroup } = useStore();
   const [group, setGroup] = useState<MaterialGroup>('pipe');
   const [f1, setF1] = useState('all'); // diameter | category
   const [f2, setF2] = useState('all'); // kind
   const [f3, setF3] = useState('all'); // grade
+  const [f4, setF4] = useState('all'); // thickness (isolation)
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortKey, setSortKey] = useState('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const resetFilters = (g: MaterialGroup) => { setGroup(g); setF1('all'); setF2('all'); setF3('all'); };
+  const resetFilters = (g: MaterialGroup) => { setGroup(g); setF1('all'); setF2('all'); setF3('all'); setF4('all'); };
+
+  /** Distinct non-empty values of a field among the materials of the current group, sorted. */
+  const fieldOptions = useMemo(
+    () => (field: keyof Material): string[] => {
+      const seen = new Set<string>();
+      for (const m of materialsByGroup(group)) {
+        const v = m[field];
+        if (typeof v === 'string' && v.trim()) seen.add(v);
+      }
+      return [...seen].sort((a, b) => a.localeCompare(b, 'tr'));
+    },
+    [materialsByGroup, group]
+  );
 
   const items = useMemo(() => {
     let list = materialsByGroup(group);
@@ -99,7 +113,9 @@ export function StockPage({ open }: StockPageProps) {
         if (f2 !== 'all' && m.kind !== f2) return false;
         if (f3 !== 'all' && m.grade !== f3) return false;
       } else if (group === 'isolation') {
+        if (f1 !== 'all' && m.diameter !== f1) return false;
         if (f2 !== 'all' && m.kind !== f2) return false;
+        if (f4 !== 'all' && m.thickness !== f4) return false;
       } else {
         if (f1 !== 'all' && m.category !== f1) return false;
       }
@@ -118,7 +134,7 @@ export function StockPage({ open }: StockPageProps) {
       if (av === bv) return 0;
       return ((av ?? '') < (bv ?? '') ? -1 : 1) * (sortDir === 'asc' ? 1 : -1);
     });
-  }, [materialsByGroup, group, f1, f2, f3, q, statusFilter, sortKey, sortDir]);
+  }, [materialsByGroup, group, f1, f2, f3, f4, q, statusFilter, sortKey, sortDir]);
 
   const all = useMemo(
     () => [...pipeFittings, ...otherMaterials, ...ventilation, ...isolation],
@@ -198,16 +214,20 @@ export function StockPage({ open }: StockPageProps) {
         <div style={{ display: 'flex', gap: 14, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {isPipeLike && (
             <>
-              <FilterGroup label={t('stockPage.filterDiameter')} value={f1} onChange={setF1} options={['all', ...catalogOptions(group, 'diameter')]} />
-              <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...catalogOptions(group, 'kind')]} />
-              <FilterGroup label={t('stockPage.filterGrade')} value={f3} onChange={setF3} options={['all', ...catalogOptions(group, 'grade')]} />
+              <FilterGroup label={t('stockPage.filterDiameter')} value={f1} onChange={setF1} options={['all', ...fieldOptions('diameter')]} />
+              <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...fieldOptions('kind')]} />
+              <FilterGroup label={t('stockPage.filterGrade')} value={f3} onChange={setF3} options={['all', ...fieldOptions('grade')]} />
             </>
           )}
           {group === 'isolation' && (
-            <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...catalogOptions('isolation', 'kind')]} />
+            <>
+              <FilterGroup label={t('stockPage.filterDiameter')} value={f1} onChange={setF1} options={['all', ...fieldOptions('diameter')]} />
+              <FilterGroup label={t('stockPage.filterKind')} value={f2} onChange={setF2} options={['all', ...fieldOptions('kind')]} />
+              <FilterGroup label={t('stockPage.filterThickness')} value={f4} onChange={setF4} options={['all', ...fieldOptions('thickness')]} />
+            </>
           )}
           {group === 'other' && (
-            <FilterGroup label={t('stockPage.filterCategory')} value={f1} onChange={setF1} options={['all', ...catalogOptions('other', 'category')]} />
+            <FilterGroup label={t('stockPage.filterCategory')} value={f1} onChange={setF1} options={['all', ...fieldOptions('category')]} />
           )}
         </div>
       </div>
@@ -234,7 +254,7 @@ export function StockPage({ open }: StockPageProps) {
                 <tr key={m.id} onClick={() => open('detail', m.id)} style={{ borderBottom: `1px solid ${TOKENS.lineSoft}`, cursor: 'pointer' }} onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.bg)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                   <Td><span style={{ fontFamily: TOKENS.mono, fontSize: 11.5, color: TOKENS.inkMuted, letterSpacing: 0.5 }}>{m.id.toUpperCase()}</span></Td>
                   <Td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><MaterialGlyph material={m} size={32} /><span style={{ fontWeight: 500, fontSize: 14 }}>{getMaterialName(m)}</span></div></Td>
-                  {isPipeLike && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.diameter ?? '—'}</span></Td><Td>{m.kind}</Td><Td>{m.grade}</Td></>}
+                  {isPipeLike && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.size ?? m.diameter ?? '—'}</span></Td><Td>{m.kind}</Td><Td>{m.grade}</Td></>}
                   {group === 'isolation' && <><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{isolationSize(m)}</span></Td><Td>{m.kind}</Td><Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13 }}>{m.thickness}mm</span></Td></>}
                   {group === 'other' && <Td>{m.category}</Td>}
                   <Td align="right">

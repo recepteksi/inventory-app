@@ -14,6 +14,10 @@ export function createMongoOrderRepository(db: Db): IOrderRepository {
       return col.findOne({ id }, proj) as Promise<Order | null>;
     },
 
+    async countByMaterialId(materialId: string): Promise<number> {
+      return col.countDocuments({ 'items.materialId': materialId });
+    },
+
     async create(data: Order): Promise<Order> {
       await col.insertOne({ ...data });
       return data;
@@ -24,8 +28,9 @@ export function createMongoOrderRepository(db: Db): IOrderRepository {
       return col.findOne({ id }, proj) as Promise<Order | null>;
     },
 
-    async delete(id: string): Promise<void> {
-      await col.deleteOne({ id });
+    async delete(id: string): Promise<boolean> {
+      const result = await col.deleteOne({ id });
+      return result.deletedCount > 0;
     },
   };
 }

@@ -10,6 +10,7 @@ interface RawItem { materialId: string; quantity: number; }
 export async function createOrder(
   payload: Record<string, unknown>,
   createdBy: string,
+  createdById: string,
   { materialRepo, orderRepo }: { materialRepo: IMaterialRepository; orderRepo: IOrderRepository }
 ): Promise<Order> {
   const rawItems = Array.isArray(payload['items']) ? (payload['items'] as RawItem[]) : [];
@@ -35,7 +36,7 @@ export async function createOrder(
     });
   }
 
-  const order = buildOrder({ items, orderDate, supplier, note, createdBy });
+  const order = buildOrder({ items, orderDate, supplier, note, createdBy, createdById });
   await orderRepo.create(order);
   await notifyOrderCreated(order);
   return order;

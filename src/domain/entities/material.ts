@@ -19,7 +19,7 @@ export function getMaterialName(m: Material | null | undefined): string {
     return `${m.kind} ${isolationSize(m)} · ${m.thickness}mm`;
   }
   if (m.kind) {
-    return [m.diameter, m.grade, m.kind].filter(Boolean).join(' ');
+    return [m.size ?? m.diameter, m.grade, m.kind].filter(Boolean).join(' ');
   }
   return m.name ?? '—';
 }

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { TOKENS, btnPrimaryStyle } from '../components/ui/tokens.tsx';
 import { Sub } from '../components/ui/Sub.tsx';
 import { useStore } from '../store/store.tsx';
-import { DEFAULT_OPTIONS } from '../store/defaultOptions.ts';
 import { t, tr } from '../../i18n/tr.ts';
 import type { CatalogField, MaterialGroup } from '../../types/index.ts';
 
@@ -19,7 +18,6 @@ function FieldRow({ section, field }: { section: MaterialGroup; field: CatalogFi
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const defaults = DEFAULT_OPTIONS[`${section}.${field}`] ?? [];
   const custom = catalog.filter((c) => c.section === section && c.field === field);
 
   const add = async () => {
@@ -51,9 +49,6 @@ function FieldRow({ section, field }: { section: MaterialGroup; field: CatalogFi
     <div style={{ padding: '12px 14px', borderTop: `1px solid ${TOKENS.lineSoft}` }}>
       <Sub style={{ marginBottom: 6 }}>{tr.catalogPage.fieldLabels[field]}</Sub>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {defaults.map((v) => (
-          <span key={`d-${v}`} style={{ padding: '5px 10px', borderRadius: 999, border: `1px solid ${TOKENS.line}`, background: TOKENS.bg, fontFamily: TOKENS.font, fontSize: 13, color: TOKENS.inkSoft }}>{v}</span>
-        ))}
         {custom.map((c) => (
           <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 10px', borderRadius: 999, border: `1px solid ${TOKENS.ink}`, background: TOKENS.paper, fontFamily: TOKENS.font, fontSize: 13, color: TOKENS.ink }}>
             {c.value}

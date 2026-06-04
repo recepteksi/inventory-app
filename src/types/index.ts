@@ -13,6 +13,8 @@ export interface Material {
   width?: string;
   height?: string;
   thickness?: string;
+  /** Optional free-text special size (e.g. for reductions/tees). */
+  size?: string;
   stock: number;
   /** Optional minimum stock. When undefined the material is not low-stock tracked. */
   minimum?: number;
@@ -66,6 +68,8 @@ export interface Order {
   supplier?: string;
   note?: string;
   createdBy: string;
+  /** The user id of the creator (used for delete-permission checks). */
+  createdById?: string;
   createdAt: string;
   approvedAt?: string;
   approvedBy?: string;

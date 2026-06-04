@@ -5,7 +5,6 @@ import { movementsApi } from '../../infrastructure/api/movementsApi.ts';
 import { catalogApi } from '../../infrastructure/api/catalogApi.ts';
 import { ordersApi } from '../../infrastructure/api/ordersApi.ts';
 import { getMaterialName } from '../../domain/entities/material.ts';
-import { DEFAULT_OPTIONS } from './defaultOptions.ts';
 import type {
   Material, Worker, Movement, Order, CatalogEntry, CatalogField, MaterialGroup,
   MaterialsResponse, MovementResult, BatchUsageResult,
@@ -220,13 +219,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const catalogOptions = useCallback(
     (section: MaterialGroup, field: CatalogField): string[] => {
-      const defaults = DEFAULT_OPTIONS[`${section}.${field}`] ?? [];
-      const custom = state.catalog.filter((c) => c.section === section && c.field === field).map((c) => c.value);
       const seen = new Set<string>();
       const out: string[] = [];
-      for (const v of [...defaults, ...custom]) {
-        const key = v.toLowerCase();
-        if (!seen.has(key)) { seen.add(key); out.push(v); }
+      for (const c of state.catalog) {
+        if (c.section !== section || c.field !== field) continue;
+        const key = c.value.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); out.push(c.value); }
       }
       return out;
     },
