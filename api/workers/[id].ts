@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from '../_repos.js';
-import { requireAuth } from '../_auth.js';
+import { requireAuth, requireRole } from '../_auth.js';
 import { updateWorker } from '../../server/application/usecases/worker/updateWorker.js';
 import { deleteWorker } from '../../server/application/usecases/worker/deleteWorker.js';
 
@@ -10,6 +10,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const id = req.query['id'] as string;
   try {
     requireAuth(req);
+    // Editing and deleting workers is restricted to admins (yöneticiler).
+    requireRole(req, 'admin');
     const { workerRepo, movementRepo } = await getRepos();
 
     if (req.method === 'PUT') {

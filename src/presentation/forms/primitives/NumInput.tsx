@@ -15,9 +15,9 @@ export function NumInput({ value, onChange, suffix, warn }: NumInputProps) {
         onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
         placeholder="0"
         inputMode="decimal"
-        style={{ flex: 1, padding: '12px 0', border: 'none', outline: 'none', background: 'transparent', fontFamily: TOKENS.mono, fontSize: 17, color: TOKENS.ink, fontWeight: 600 }}
+        style={{ flex: 1, minWidth: 0, padding: '12px 0', border: 'none', outline: 'none', background: 'transparent', fontFamily: TOKENS.mono, fontSize: 17, color: TOKENS.ink, fontWeight: 600 }}
       />
-      {suffix && <span style={{ fontFamily: TOKENS.mono, fontSize: 13, color: TOKENS.inkMuted }}>{suffix}</span>}
+      {suffix && <span title={suffix} style={{ flexShrink: 1, marginLeft: 8, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: TOKENS.mono, fontSize: 13, color: TOKENS.inkMuted }}>{suffix}</span>}
     </div>
   );
 }

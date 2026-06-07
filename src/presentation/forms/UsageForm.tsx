@@ -35,7 +35,8 @@ export function UsageForm({ presetId, goBack }: UsageFormProps) {
   const [quantity, setQuantity] = useState('');
   const [workerId, setWorkerId] = useState('');
   const [jobDescription, setJobDescription] = useState('');
-  const [date, setDate] = useState(todayIso());
+  const today = todayIso();
+  const [date, setDate] = useState(today);
   const [submitted, setSubmitted] = useState(false);
   const [snapshot, setSnapshot] = useState<UsageSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,8 @@ export function UsageForm({ presetId, goBack }: UsageFormProps) {
   const material = materialId ? getMaterial(materialId) : null;
   const worker = workerId ? getWorker(workerId) : null;
   const isInsufficient = !!(material && quantity && Number(quantity) > material.stock);
-  const valid = materialId && quantity && Number(quantity) > 0 && workerId && jobDescription.trim().length > 2;
+  const dateInFuture = date > today;
+  const valid = materialId && quantity && Number(quantity) > 0 && workerId && jobDescription.trim().length > 2 && !dateInFuture;
 
   const submit = async () => {
     if (!valid || isInsufficient || loading) return;
@@ -84,7 +86,7 @@ export function UsageForm({ presetId, goBack }: UsageFormProps) {
       </Field>
       <Field label={t('usageForm.fieldWorker')}><WorkerPicker value={workerId} onChange={setWorkerId} /></Field>
       <Field label={t('usageForm.fieldJob')}><TextArea value={jobDescription} onChange={setJobDescription} placeholder={t('usageForm.jobPlaceholder')} /></Field>
-      <Field label={t('usageForm.fieldDate')}><DateInput value={date} onChange={setDate} /></Field>
+      <Field label={t('usageForm.fieldDate')} hint={dateInFuture ? t('usageForm.futureDate') : null}><DateInput value={date} onChange={setDate} max={today} /></Field>
       <ErrorBanner message={error} />
       <div style={{ position: 'sticky', bottom: 0, padding: '12px 0 0', background: `linear-gradient(transparent, ${TOKENS.bg} 30%)` }}>
         <button onClick={submit} disabled={!valid || !!isInsufficient || loading} style={{ ...btnPrimaryStyle, width: '100%', padding: '14px', opacity: valid && !isInsufficient && !loading ? 1 : 0.4 }}>

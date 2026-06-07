@@ -92,8 +92,10 @@ export interface Order {
   siteId: string;
   items: OrderItem[];
   status: OrderStatus;
-  /** Requested delivery date (YYYY-MM-DD). Cannot be in the past. */
+  /** Date the order was created (YYYY-MM-DD). */
   orderDate: string;
+  /** Delivery deadline (termin), set by the admin on approval. Future-dated. */
+  deliveryDate?: string;
   supplier?: string;
   note?: string;
   /** Display name of the user who created the order. */
@@ -112,6 +114,8 @@ export interface CatalogEntry {
   section: MaterialGroup;
   field: CatalogField;
   value: string;
+  /** Display order within its (section, field) group. Lower comes first. */
+  order?: number;
 }
 
 export interface MaterialsResponse {
@@ -202,6 +206,7 @@ export interface ICatalogRepository {
   findAll(): Promise<CatalogEntry[]>;
   findById(id: string): Promise<CatalogEntry | null>;
   create(data: CatalogEntry): Promise<CatalogEntry>;
+  update(id: string, data: Partial<CatalogEntry>): Promise<CatalogEntry | null>;
   /** Returns true when a document was actually removed. */
   delete(id: string): Promise<boolean>;
   exists(section: string, field: string, value: string): Promise<boolean>;

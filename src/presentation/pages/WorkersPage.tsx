@@ -5,10 +5,11 @@ import { Sub } from '../components/ui/Sub.tsx';
 import { MaterialGlyph } from '../components/ui/MaterialGlyph.tsx';
 import { WorkerAvatar } from '../components/ui/WorkerAvatar.tsx';
 import { useStore } from '../store/store.tsx';
+import { useAuth } from '../auth/AuthProvider.tsx';
 import { formatDate } from '../../utils/formatDate.ts';
 import { getMaterialName } from '../../domain/entities/material.ts';
 import { t } from '../../i18n/tr.ts';
-import type { Material } from '../../types/index.ts';
+import type { Material, Movement } from '../../types/index.ts';
 
 function SubHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -18,23 +19,24 @@ function SubHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-interface ThProps {
-  children: React.ReactNode;
-  w?: number;
-  align?: 'left' | 'right' | 'center';
+interface JobGroup {
+  key: string;
+  jobDescription: string;
+  date: string;
+  items: Movement[];
 }
 
-function Th({ children, w, align = 'left' }: ThProps) {
-  return <th style={{ padding: '10px 14px', textAlign: align, width: w, fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.inkMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>{children}</th>;
-}
-
-interface TdProps {
-  children: React.ReactNode;
-  align?: 'left' | 'right' | 'center';
-}
-
-function Td({ children, align = 'left' }: TdProps) {
-  return <td style={{ padding: '10px 14px', textAlign: align, fontFamily: TOKENS.font, fontSize: 13.5, color: TOKENS.ink, verticalAlign: 'middle' }}>{children}</td>;
+/** Groups a worker's usage movements by job (one job = one batch), so the same
+ * job + date is shown once with its materials listed beneath it. */
+function groupJobs(movements: Movement[]): JobGroup[] {
+  const map = new Map<string, JobGroup>();
+  for (const h of movements) {
+    const key = h.batchId ?? h.id;
+    const existing = map.get(key);
+    if (existing) existing.items.push(h);
+    else map.set(key, { key, jobDescription: h.jobDescription ?? '', date: h.date, items: [h] });
+  }
+  return [...map.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 interface WorkersPageProps {
@@ -43,6 +45,7 @@ interface WorkersPageProps {
 
 export function WorkersPage({ open }: WorkersPageProps) {
   const { workers, movementsForWorker, getMaterial, removeWorker } = useStore();
+  const { isAdmin } = useAuth();
   const [activeWorkerId, setActiveWorkerId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -56,7 +59,7 @@ export function WorkersPage({ open }: WorkersPageProps) {
           <h1 style={{ fontFamily: TOKENS.font, fontWeight: 600, fontSize: 30, margin: 0, letterSpacing: -0.6 }}>{t('workersPage.title')}</h1>
           <div style={{ fontFamily: TOKENS.font, fontSize: 14, color: TOKENS.inkSoft, marginTop: 4 }}>{t('workersPage.subtitle')}</div>
         </div>
-        <button onClick={() => open('new-worker')} style={btnPrimaryStyle}>{t('workersPage.addWorker')}</button>
+        {isAdmin && <button onClick={() => open('new-worker')} style={btnPrimaryStyle}>{t('workersPage.addWorker')}</button>}
       </div>
       <div style={{ marginTop: 40, textAlign: 'center', color: TOKENS.inkMuted, fontFamily: TOKENS.font, fontSize: 14 }}>{t('workersPage.empty')}</div>
     </div>
@@ -64,6 +67,7 @@ export function WorkersPage({ open }: WorkersPageProps) {
 
   const worker = workers.find((x) => x.id === effectiveSelected) || workers[0];
   const movements = movementsForWorker(worker.id);
+  const jobGroups = groupJobs(movements);
 
   const materialUsage: Record<string, { quantity: number; unit: string; m: Material }> = {};
   movements.forEach((h) => {
@@ -96,7 +100,7 @@ export function WorkersPage({ open }: WorkersPageProps) {
           <h1 style={{ fontFamily: TOKENS.font, fontWeight: 600, fontSize: 30, margin: 0, letterSpacing: -0.6 }}>{t('workersPage.title')}</h1>
           <div style={{ fontFamily: TOKENS.font, fontSize: 14, color: TOKENS.inkSoft, marginTop: 4 }}>{t('workersPage.subtitle')}</div>
         </div>
-        <button onClick={() => open('new-worker')} style={btnPrimaryStyle}>{t('workersPage.addWorker')}</button>
+        {isAdmin && <button onClick={() => open('new-worker')} style={btnPrimaryStyle}>{t('workersPage.addWorker')}</button>}
       </div>
       {deleteError && <div style={{ marginTop: 10, padding: '10px 14px', background: 'oklch(0.96 0.03 30)', border: '1px solid oklch(0.80 0.10 30)', borderRadius: 10, fontFamily: TOKENS.font, fontSize: 13, color: 'oklch(0.45 0.18 30)' }}>{deleteError}</div>}
 
@@ -133,10 +137,12 @@ export function WorkersPage({ open }: WorkersPageProps) {
               {movements.length}
               <Sub>{t('workersPage.registeredJobs')}</Sub>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button onClick={() => open('edit-worker', worker.id)} style={{ ...btnGhostStyle, fontSize: 13 }}>{t('workersPage.btnEdit')}</button>
-              <button onClick={() => handleDelete(worker.id)} disabled={deleting} style={{ ...btnDangerStyle, fontSize: 13, opacity: deleting ? 0.5 : 1 }}>{t('workersPage.btnDelete')}</button>
-            </div>
+            {isAdmin && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button onClick={() => open('edit-worker', worker.id)} style={{ ...btnGhostStyle, fontSize: 13 }}>{t('workersPage.btnEdit')}</button>
+                <button onClick={() => handleDelete(worker.id)} disabled={deleting} style={{ ...btnDangerStyle, fontSize: 13, opacity: deleting ? 0.5 : 1 }}>{t('workersPage.btnDelete')}</button>
+              </div>
+            )}
           </div>
 
           {topMaterials.length > 0 && (
@@ -155,32 +161,28 @@ export function WorkersPage({ open }: WorkersPageProps) {
           )}
 
           <div style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, overflow: 'hidden' }}>
-            <SubHeader>{t('workersPage.jobsHeading').replace('{count}', String(movements.length))}</SubHeader>
-            {movements.length === 0
+            <SubHeader>{t('workersPage.jobsHeading').replace('{count}', String(jobGroups.length))}</SubHeader>
+            {jobGroups.length === 0
               ? <div style={{ padding: 30, textAlign: 'center', color: TOKENS.inkMuted, fontFamily: TOKENS.font, fontSize: 14 }}>{t('workersPage.jobsEmpty')}</div>
-              : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: TOKENS.bg, borderBottom: `1px solid ${TOKENS.lineSoft}` }}>
-                      <Th w={110}>{t('workersPage.colDate')}</Th><Th>{t('workersPage.colJob')}</Th><Th w={200}>{t('workersPage.colMaterial')}</Th><Th w={100} align="right">{t('workersPage.colQuantity')}</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movements.map((h) => {
+              : jobGroups.map((g, gi) => (
+                  <div key={g.key} style={{ borderTop: gi === 0 ? 'none' : `1px solid ${TOKENS.line}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: TOKENS.bg }}>
+                      <div style={{ flex: 1, minWidth: 0, fontFamily: TOKENS.font, fontWeight: 600, fontSize: 13.5, color: TOKENS.ink }}>{g.jobDescription || '—'}</div>
+                      <span style={{ fontFamily: TOKENS.mono, fontSize: 11, color: TOKENS.inkMuted }}>{formatDate(g.date)}</span>
+                    </div>
+                    {g.items.map((h) => {
                       const m = getMaterial(h.materialId);
                       if (!m) return null;
                       return (
-                        <tr key={h.id} style={{ borderBottom: `1px solid ${TOKENS.lineSoft}` }}>
-                          <Td><span style={{ fontFamily: TOKENS.mono, fontSize: 13, color: TOKENS.ink }}>{formatDate(h.date)}</span></Td>
-                          <Td>{h.jobDescription}</Td>
-                          <Td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MaterialGlyph material={m} size={24} /><span style={{ fontSize: 13 }}>{getMaterialName(m)}</span></div></Td>
-                          <Td align="right"><span style={{ fontFamily: TOKENS.mono, fontSize: 13, fontWeight: 600, color: TOKENS.accent }}>−{h.quantity}</span> <span style={{ fontFamily: TOKENS.mono, fontSize: 10.5, color: TOKENS.inkMuted }}>{m.unit}</span></Td>
-                        </tr>
+                        <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px 8px 22px', borderTop: `1px solid ${TOKENS.lineSoft}` }}>
+                          <MaterialGlyph material={m} size={24} />
+                          <span style={{ flex: 1, fontFamily: TOKENS.font, fontSize: 13, color: TOKENS.ink }}>{getMaterialName(m)}</span>
+                          <span style={{ fontFamily: TOKENS.mono, fontSize: 13, fontWeight: 600, color: TOKENS.accent }}>−{h.quantity} <span style={{ color: TOKENS.inkMuted, fontSize: 10.5 }}>{m.unit}</span></span>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
-              )}
+                  </div>
+                ))}
           </div>
         </div>
       </div>

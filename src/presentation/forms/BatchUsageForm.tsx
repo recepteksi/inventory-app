@@ -23,9 +23,10 @@ interface BatchUsageFormProps {
 
 export function BatchUsageForm({ goBack }: BatchUsageFormProps) {
   const { getMaterial, addUsageBatch } = useStore();
+  const today = todayIso();
   const [workerId, setWorkerId] = useState('');
   const [jobDescription, setJobDescription] = useState('');
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState(today);
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -40,7 +41,8 @@ export function BatchUsageForm({ goBack }: BatchUsageFormProps) {
     const m = r.materialId ? getMaterial(r.materialId) : null;
     return m && r.quantity && Number(r.quantity) > m.stock;
   });
-  const valid = workerId && jobDescription.trim().length > 2 && date && filled.length > 0 && !anyInsufficient;
+  const dateInFuture = date > today;
+  const valid = workerId && jobDescription.trim().length > 2 && date && !dateInFuture && filled.length > 0 && !anyInsufficient;
 
   const submit = async () => {
     if (!valid || loading) return;
@@ -62,7 +64,7 @@ export function BatchUsageForm({ goBack }: BatchUsageFormProps) {
     <FormShell title={t('batchUsageForm.title')} altTitle={t('batchUsageForm.subtitle')}>
       <Field label={t('usageForm.fieldWorker')}><WorkerPicker value={workerId} onChange={setWorkerId} /></Field>
       <Field label={t('usageForm.fieldJob')}><TextArea value={jobDescription} onChange={setJobDescription} placeholder={t('usageForm.jobPlaceholder')} /></Field>
-      <Field label={t('usageForm.fieldDate')}><DateInput value={date} onChange={setDate} /></Field>
+      <Field label={t('usageForm.fieldDate')} hint={dateInFuture ? t('usageForm.futureDate') : null}><DateInput value={date} onChange={setDate} max={today} /></Field>
 
       <div style={{ borderTop: `1px solid ${TOKENS.lineSoft}`, paddingTop: 8 }}>
         <div style={{ fontFamily: TOKENS.font, fontSize: 13, fontWeight: 600, color: TOKENS.ink, marginBottom: 8 }}>{t('batchUsageForm.materials')}</div>

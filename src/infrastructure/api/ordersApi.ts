@@ -9,8 +9,11 @@ export const ordersApi = {
   create: (payload: Record<string, unknown>): Promise<Order> =>
     apiFetch<Order>('/orders', { method: 'POST', body: payload }),
 
-  approve: (id: string): Promise<Order> =>
-    apiFetch<Order>(`/orders/${id}`, { method: 'PUT', body: { action: 'approve' } }),
+  update: (id: string, payload: Record<string, unknown>): Promise<Order> =>
+    apiFetch<Order>(`/orders/${id}`, { method: 'PUT', body: { ...payload, action: 'update' } }),
+
+  approve: (id: string, deliveryDate: string): Promise<Order> =>
+    apiFetch<Order>(`/orders/${id}`, { method: 'PUT', body: { action: 'approve', deliveryDate } }),
 
   remove: (id: string): Promise<void> =>
     apiFetch<void>(`/orders/${id}`, { method: 'DELETE' }),

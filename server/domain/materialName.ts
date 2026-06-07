@@ -11,7 +11,7 @@ function isolationSize(m: Material): string {
  * `getMaterialName`. Used to snapshot a readable name onto order items.
  */
 export function getMaterialDisplayName(m: Material): string {
-  if (m.group === 'isolation') return `${m.kind} ${isolationSize(m)} · ${m.thickness}mm`;
+  if (m.group === 'isolation') return `${isolationSize(m)} ${m.kind} · ${m.thickness}mm`;
   if (m.kind) return [m.diameter, m.grade, m.kind].filter(Boolean).join(' ');
   return m.name ?? m.id;
 }

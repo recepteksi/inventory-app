@@ -1,4 +1,4 @@
-import { buildOrder } from '../../../domain/entities/Order.js';
+import { buildOrder, todayIsoDate } from '../../../domain/entities/Order.js';
 import { notifyOrderCreated } from '../../../infrastructure/notify.js';
 import type { Order, OrderItem, IMaterialRepository, IOrderRepository } from '../../../types/index.js';
 import { getMaterialDisplayName } from '../../../domain/materialName.js';
@@ -15,7 +15,9 @@ export async function createOrder(
 ): Promise<Order> {
   const rawItems = Array.isArray(payload['items']) ? (payload['items'] as RawItem[]) : [];
   const siteId = String(payload['siteId'] ?? '');
-  const orderDate = String(payload['orderDate'] ?? '');
+  // The order date is the creation date. Users no longer pick it — the delivery
+  // deadline (termin) is set by the admin when approving.
+  const orderDate = todayIsoDate();
   const supplier = typeof payload['supplier'] === 'string' ? payload['supplier'].trim() : undefined;
   const note = typeof payload['note'] === 'string' ? payload['note'].trim() : undefined;
 

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from './_repos.js';
-import { requireAuth } from './_auth.js';
+import { requireAuth, requireRole } from './_auth.js';
 import { createWorker } from '../server/application/usecases/worker/createWorker.js';
 
 interface AppError extends Error { status?: number; }
@@ -16,6 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     if (req.method === 'POST') {
+      // Only admins (yöneticiler) may add workers.
+      requireRole(req, 'admin');
       const worker = await createWorker(
         req.body as Record<string, unknown>,
         { workerRepo }

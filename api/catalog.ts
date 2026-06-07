@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getRepos } from './_repos.js';
 import { requireAuth, requireRole } from './_auth.js';
 import { createCatalogEntry } from '../server/application/usecases/catalog/createCatalogEntry.js';
+import { reorderCatalog } from '../server/application/usecases/catalog/reorderCatalog.js';
 
 interface AppError extends Error { status?: number; }
 
@@ -19,6 +20,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       requireRole(req, 'admin');
       const entry = await createCatalogEntry(req.body as Record<string, unknown>, { catalogRepo });
       res.status(201).json(entry);
+      return;
+    }
+
+    if (req.method === 'PUT') {
+      requireRole(req, 'admin');
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const id = String(body['id'] ?? '');
+      const direction = body['direction'] as 'up' | 'down';
+      if (!id) { res.status(400).json({ error: 'id is required' }); return; }
+      const catalog = await reorderCatalog(id, direction, { catalogRepo });
+      res.json(catalog);
       return;
     }
 

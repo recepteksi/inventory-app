@@ -25,7 +25,7 @@ import { NewOrderForm } from './presentation/forms/NewOrderForm.tsx';
 import { useStore } from './presentation/store/store.tsx';
 import { useAuth } from './presentation/auth/AuthProvider.tsx';
 
-const MODAL_KINDS = ['delivery', 'usage', 'batch-usage', 'new-material', 'edit-material', 'new-worker', 'edit-worker', 'new-order'];
+const MODAL_KINDS = ['delivery', 'usage', 'batch-usage', 'new-material', 'edit-material', 'new-worker', 'edit-worker', 'new-order', 'edit-order'];
 
 /**
  * Application root. Navigation is driven by three state vars: `page`, `route`, `modal`.
@@ -88,6 +88,7 @@ export default function App() {
           {modal.kind === 'new-worker'    && <NewWorkerForm goBack={closeModal} />}
           {modal.kind === 'edit-worker'   && modal.id && <EditWorkerForm id={modal.id} goBack={closeModal} />}
           {modal.kind === 'new-order'     && <NewOrderForm goBack={closeModal} />}
+          {modal.kind === 'edit-order'    && modal.id && <NewOrderForm id={modal.id} goBack={closeModal} />}
         </FormModal>
       )}
     </div>

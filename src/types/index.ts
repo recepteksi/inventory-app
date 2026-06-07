@@ -74,7 +74,10 @@ export interface Order {
   siteId: string;
   items: OrderItem[];
   status: OrderStatus;
+  /** Date the order was created (YYYY-MM-DD). */
   orderDate: string;
+  /** Delivery deadline (termin), set by the admin on approval. Future-dated. */
+  deliveryDate?: string;
   supplier?: string;
   note?: string;
   createdBy: string;
@@ -92,6 +95,8 @@ export interface CatalogEntry {
   section: MaterialGroup;
   field: CatalogField;
   value: string;
+  /** Display order within its (section, field) group. Lower comes first. */
+  order?: number;
 }
 
 export interface MaterialsResponse {
@@ -122,6 +127,7 @@ export type ModalKind =
   | 'new-worker'
   | 'edit-worker'
   | 'new-order'
+  | 'edit-order'
   | 'new-user'
   | 'edit-user';
 

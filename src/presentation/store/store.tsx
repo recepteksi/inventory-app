@@ -55,6 +55,7 @@ type StoreAction =
   | { type: 'MOVEMENT_ADDED'; payload: MovementResult }
   | { type: 'MOVEMENTS_BATCH_ADDED'; payload: BatchUsageResult }
   | { type: 'CATALOG_ADDED'; payload: CatalogEntry }
+  | { type: 'CATALOG_LOADED'; payload: CatalogEntry[] }
   | { type: 'CATALOG_DELETED'; payload: string }
   | { type: 'ORDER_ADDED'; payload: Order }
   | { type: 'ORDER_UPDATED'; payload: Order }
@@ -79,9 +80,11 @@ interface StoreValue extends StoreState {
   editWorker: (id: string, payload: Record<string, unknown>) => Promise<Worker>;
   removeWorker: (id: string) => Promise<void>;
   addCatalog: (payload: Record<string, unknown>) => Promise<CatalogEntry>;
+  reorderCatalog: (id: string, direction: 'up' | 'down') => Promise<void>;
   removeCatalog: (id: string) => Promise<void>;
   addOrder: (payload: Record<string, unknown>) => Promise<Order>;
-  approveOrder: (id: string) => Promise<Order>;
+  editOrder: (id: string, payload: Record<string, unknown>) => Promise<Order>;
+  approveOrder: (id: string, deliveryDate: string) => Promise<Order>;
   removeOrder: (id: string) => Promise<void>;
   currentSite: Site | null;
   selectSite: (id: string) => Promise<void>;
@@ -192,6 +195,8 @@ function reducer(state: StoreState, action: StoreAction): StoreState {
     }
     case 'CATALOG_ADDED':
       return { ...state, catalog: [...state.catalog, action.payload] };
+    case 'CATALOG_LOADED':
+      return { ...state, catalog: action.payload };
     case 'CATALOG_DELETED':
       return { ...state, catalog: state.catalog.filter((c) => c.id !== action.payload) };
     case 'ORDER_ADDED':
@@ -349,6 +354,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return entry;
   }, []);
 
+  const reorderCatalog = useCallback(async (id: string, direction: 'up' | 'down'): Promise<void> => {
+    const catalog = await catalogApi.reorder(id, direction);
+    dispatch({ type: 'CATALOG_LOADED', payload: catalog });
+  }, []);
+
   const removeCatalog = useCallback(async (id: string): Promise<void> => {
     await catalogApi.remove(id);
     dispatch({ type: 'CATALOG_DELETED', payload: id });
@@ -362,9 +372,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return order;
   }, []);
 
-  const approveOrder = useCallback(async (id: string): Promise<Order> => {
+  const editOrder = useCallback(async (id: string, payload: Record<string, unknown>): Promise<Order> => {
+    const order = await ordersApi.update(id, payload);
+    dispatch({ type: 'ORDER_UPDATED', payload: order });
+    return order;
+  }, []);
+
+  const approveOrder = useCallback(async (id: string, deliveryDate: string): Promise<Order> => {
     const siteId = siteIdRef.current;
-    const order = await ordersApi.approve(id);
+    const order = await ordersApi.approve(id, deliveryDate);
     dispatch({ type: 'ORDER_UPDATED', payload: order });
     if (!siteId) return order;
     // Approval records deliveries on the server — refresh stock + movements.
@@ -437,8 +453,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addDelivery, addUsage, addUsageBatch,
     addMaterial, editMaterial, removeMaterial,
     addWorker, editWorker, removeWorker,
-    addCatalog, removeCatalog,
-    addOrder, approveOrder, removeOrder,
+    addCatalog, reorderCatalog, removeCatalog,
+    addOrder, editOrder, approveOrder, removeOrder,
     currentSite, selectSite, addSite, editSite, removeSite,
   };
 

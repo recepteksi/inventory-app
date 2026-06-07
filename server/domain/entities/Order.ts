@@ -36,8 +36,8 @@ export function buildOrder({
   if (!items.length) throw bad('An order must contain at least one item');
   if (!siteId) throw bad('siteId is required');
   if (!orderDate) throw bad('orderDate is required');
-  // ISO date strings compare lexicographically — guard against past dates.
-  if (orderDate < todayIsoDate()) throw bad('Order date cannot be in the past');
+  // orderDate is the creation date (set server-side to today); the delivery
+  // deadline (termin) is chosen later by the admin on approval.
   if (items.some((i) => !i.materialId || i.quantity <= 0)) throw bad('Each item needs a material and a positive quantity');
 
   const order: Order = {

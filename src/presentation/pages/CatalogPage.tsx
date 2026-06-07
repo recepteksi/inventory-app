@@ -13,7 +13,7 @@ const SECTIONS: { id: MaterialGroup; label: string; fields: CatalogField[] }[] =
 ];
 
 function FieldRow({ section, field }: { section: MaterialGroup; field: CatalogField }) {
-  const { catalog, addCatalog, removeCatalog } = useStore();
+  const { catalog, addCatalog, reorderCatalog, removeCatalog } = useStore();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,16 +45,32 @@ function FieldRow({ section, field }: { section: MaterialGroup; field: CatalogFi
     }
   };
 
+  const move = async (id: string, direction: 'up' | 'down') => {
+    setBusy(true); setError('');
+    try {
+      await reorderCatalog(id, direction);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div style={{ padding: '12px 14px', borderTop: `1px solid ${TOKENS.lineSoft}` }}>
       <Sub style={{ marginBottom: 6 }}>{tr.catalogPage.fieldLabels[field]}</Sub>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {custom.map((c) => (
-          <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 10px', borderRadius: 999, border: `1px solid ${TOKENS.ink}`, background: TOKENS.paper, fontFamily: TOKENS.font, fontSize: 13, color: TOKENS.ink }}>
-            {c.value}
-            <button onClick={() => void remove(c.id)} disabled={busy} style={{ appearance: 'none', border: 'none', background: 'transparent', cursor: 'pointer', color: TOKENS.inkMuted, fontSize: 15, lineHeight: 1, padding: 0 }}>×</button>
-          </span>
-        ))}
+        {custom.map((c, i) => {
+          const arrow = { appearance: 'none' as const, border: 'none', background: 'transparent', cursor: busy ? 'default' : 'pointer', color: TOKENS.inkMuted, fontSize: 12, lineHeight: 1, padding: 0 };
+          return (
+            <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 10px', borderRadius: 999, border: `1px solid ${TOKENS.ink}`, background: TOKENS.paper, fontFamily: TOKENS.font, fontSize: 13, color: TOKENS.ink }}>
+              {c.value}
+              <button onClick={() => void move(c.id, 'up')} disabled={busy || i === 0} title={tr.catalogPage.moveUp} style={{ ...arrow, opacity: i === 0 ? 0.25 : 1 }}>↑</button>
+              <button onClick={() => void move(c.id, 'down')} disabled={busy || i === custom.length - 1} title={tr.catalogPage.moveDown} style={{ ...arrow, opacity: i === custom.length - 1 ? 0.25 : 1 }}>↓</button>
+              <button onClick={() => void remove(c.id)} disabled={busy} style={{ appearance: 'none', border: 'none', background: 'transparent', cursor: 'pointer', color: TOKENS.inkMuted, fontSize: 15, lineHeight: 1, padding: 0 }}>×</button>
+            </span>
+          );
+        })}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input

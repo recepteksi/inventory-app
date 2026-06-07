@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TOKENS, btnPrimaryStyle, btnGhostStyle, btnDangerStyle } from '../components/ui/tokens.tsx';
 import { Pill } from '../components/ui/Pill.tsx';
+import { DateInput } from '../forms/primitives/DateInput.tsx';
 import { useStore } from '../store/store.tsx';
 import { useAuth } from '../auth/AuthProvider.tsx';
 import { formatDate } from '../../utils/formatDate.ts';
@@ -10,16 +11,27 @@ interface OrdersPageProps {
   open: (kind: string, id?: string) => void;
 }
 
+/** Earliest valid delivery deadline (termin): tomorrow (UTC), matching the
+ *  server-side "must be a future date" guard. */
+function tomorrowIso(): string {
+  return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+}
+
 export function OrdersPage({ open }: OrdersPageProps) {
   const { orders, approveOrder, removeOrder } = useStore();
   const { user, isAdmin } = useAuth();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approveDate, setApproveDate] = useState('');
   const [error, setError] = useState('');
+
+  const startApprove = (id: string) => { setApprovingId(id); setApproveDate(tomorrowIso()); setError(''); };
 
   const approve = async (id: string) => {
     setBusyId(id); setError('');
     try {
-      await approveOrder(id);
+      await approveOrder(id, approveDate);
+      setApprovingId(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -58,7 +70,9 @@ export function OrdersPage({ open }: OrdersPageProps) {
           {orders.map((o) => {
             const approved = o.status === 'approved';
             const isCreator = !!user && o.createdById === user.id;
+            const canEdit = !approved && (isAdmin || isCreator);
             const canDelete = approved ? isAdmin : (isAdmin || isCreator);
+            const approving = approvingId === o.id;
             return (
               <div key={o.id} style={{ background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${TOKENS.lineSoft}`, background: TOKENS.bg }}>
@@ -72,13 +86,30 @@ export function OrdersPage({ open }: OrdersPageProps) {
                     <div style={{ fontFamily: TOKENS.font, fontSize: 12.5, color: TOKENS.inkSoft, marginTop: 4 }}>
                       {t('ordersPage.orderDate').replace('{date}', formatDate(o.orderDate))} · {o.createdBy}
                       {o.supplier ? ` · ${o.supplier}` : ''}
+                      {approved && o.deliveryDate ? ` · ${t('ordersPage.deliveryDate').replace('{date}', formatDate(o.deliveryDate))}` : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {!approved && isAdmin && <button onClick={() => void approve(o.id)} disabled={busyId === o.id} style={{ ...btnPrimaryStyle, fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('ordersPage.approve')}</button>}
-                    {canDelete && <button onClick={() => void remove(o.id)} disabled={busyId === o.id} style={{ ...(approved ? btnGhostStyle : btnDangerStyle), fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('common.delete')}</button>}
+                    {canEdit && !approving && <button onClick={() => open('edit-order', o.id)} disabled={busyId === o.id} style={{ ...btnGhostStyle, fontSize: 13 }}>{t('ordersPage.edit')}</button>}
+                    {!approved && isAdmin && !approving && <button onClick={() => startApprove(o.id)} disabled={busyId === o.id} style={{ ...btnPrimaryStyle, fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('ordersPage.approve')}</button>}
+                    {canDelete && !approving && <button onClick={() => void remove(o.id)} disabled={busyId === o.id} style={{ ...(approved ? btnGhostStyle : btnDangerStyle), fontSize: 13, opacity: busyId === o.id ? 0.5 : 1 }}>{t('common.delete')}</button>}
                   </div>
                 </div>
+
+                {approving && (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, padding: '12px 14px', borderBottom: `1px solid ${TOKENS.lineSoft}`, background: TOKENS.bg, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6, gap: 8 }}>
+                        <label style={{ fontFamily: TOKENS.font, fontSize: 13, fontWeight: 600, color: TOKENS.ink }}>{t('ordersPage.approveTitle')}</label>
+                        <span style={{ fontFamily: TOKENS.mono, fontSize: 11, color: TOKENS.inkMuted }}>{t('ordersPage.approveHint')}</span>
+                      </div>
+                      <DateInput value={approveDate} onChange={setApproveDate} min={tomorrowIso()} />
+                    </div>
+                    <button onClick={() => void approve(o.id)} disabled={busyId === o.id || !approveDate} style={{ ...btnPrimaryStyle, fontSize: 13, opacity: busyId === o.id || !approveDate ? 0.5 : 1 }}>{t('ordersPage.approveConfirm')}</button>
+                    <button onClick={() => setApprovingId(null)} disabled={busyId === o.id} style={{ ...btnGhostStyle, fontSize: 13 }}>{t('ordersPage.approveCancel')}</button>
+                  </div>
+                )}
+
                 <div>
                   {o.items.map((it, i) => (
                     <div key={`${o.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i === o.items.length - 1 ? 'none' : `1px solid ${TOKENS.lineSoft}` }}>

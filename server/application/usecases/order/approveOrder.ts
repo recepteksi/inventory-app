@@ -12,6 +12,7 @@ interface AppError extends Error { status?: number; }
 export async function approveOrder(
   id: string,
   approvedBy: string,
+  deliveryDate: string,
   { materialRepo, movementRepo, orderRepo }: {
     materialRepo: IMaterialRepository;
     movementRepo: IMovementRepository;
@@ -30,6 +31,18 @@ export async function approveOrder(
     throw err;
   }
 
+  // The delivery deadline (termin) is required and must be in the future.
+  if (!deliveryDate) {
+    const err: AppError = new Error('Teslim (termin) tarihi gereklidir');
+    err.status = 400;
+    throw err;
+  }
+  if (deliveryDate <= todayIsoDate()) {
+    const err: AppError = new Error('Termin tarihi ileri bir tarih olmalıdır');
+    err.status = 400;
+    throw err;
+  }
+
   const date = todayIsoDate();
   for (const item of order.items) {
     await recordDelivery(
@@ -44,7 +57,7 @@ export async function approveOrder(
     );
   }
 
-  const updated = await orderRepo.update(id, { status: 'approved', approvedAt: new Date().toISOString(), approvedBy });
+  const updated = await orderRepo.update(id, { status: 'approved', approvedAt: new Date().toISOString(), approvedBy, deliveryDate });
   if (!updated) throw new Error('Order not found after approval');
   return updated;
 }
